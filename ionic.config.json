@@ -1,0 +1,7 @@
+{
+  "name": "srne-solar-monitor",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}
