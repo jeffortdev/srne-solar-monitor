@@ -34,4 +34,33 @@
 
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
 /* @import "@ionic/angular/css/palettes/dark.class.css"; */
-@import "@ionic/angular/css/palettes/dark.system.css";
+@import "@ionic/angular/css/palettes/dark.always.css";
+
+// SRNE global overrides
+ion-content {
+  --background: var(--ion-background-color);
+}
+
+ion-card {
+  --background: var(--ion-card-background);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+ion-item {
+  --background: transparent;
+  --border-color: rgba(255,255,255,0.08);
+}
+
+ion-list {
+  background: transparent !important;
+}
+
+// Touch target minimum 44px for accessibility
+ion-button, ion-tab-button, ion-item[button] {
+  min-height: 44px;
+}
+
+ion-tab-bar {
+  border-top: 1px solid var(--ion-tab-bar-border-color);
+}
+

@@ -1,0 +1,173 @@
+.app-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--srne-solar-color);
+}
+
+.status-badge {
+  margin-right: 8px;
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+.device-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--ion-color-medium);
+  padding: 6px 16px;
+
+  &.mock-notice {
+    color: var(--ion-color-warning);
+  }
+
+  .charging-state-label {
+    color: var(--srne-solar-color);
+    font-size: 0.75rem;
+  }
+}
+
+.dashboard-wrap {
+  padding-bottom: 16px;
+}
+
+// ── SVG Flow Diagram ──────────────────────────────────────
+
+.flow-container {
+  padding: 8px 12px 0;
+}
+
+.flow-svg {
+  width: 100%;
+  max-width: 380px;
+  display: block;
+  margin: 0 auto;
+}
+
+.node-value {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--ion-text-color);
+}
+
+.node-label {
+  font-size: 9px;
+  fill: var(--ion-color-medium);
+}
+
+.small-label {
+  font-size: 8px;
+}
+
+// Flow path base
+.flow-path {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-dasharray: 8 5;
+  stroke-dashoffset: 0;
+  opacity: 0.25;
+  transition: opacity 0.4s;
+}
+
+// Active flow — animated marching ants
+.flow-path.flow-active {
+  opacity: 1;
+  animation: marchAnts 1.2s linear infinite;
+}
+
+@keyframes marchAnts {
+  to {
+    stroke-dashoffset: -26; // move dashes forward
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-path.flow-active {
+    animation: none;
+  }
+}
+
+// ── Stats ─────────────────────────────────────────────────
+
+.stats-grid {
+  padding: 0 8px;
+
+  ion-col {
+    padding: 3px;
+  }
+}
+
+.stat-chip {
+  background: var(--ion-card-background);
+  border: 1.5px solid;
+  border-radius: 10px;
+  text-align: center;
+  padding: 8px 4px;
+}
+
+.stat-val {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stat-unit {
+  font-size: 0.65rem;
+  font-weight: 400;
+  margin-left: 1px;
+}
+
+.stat-name {
+  font-size: 0.65rem;
+  color: var(--ion-color-medium);
+  margin-top: 3px;
+}
+
+// ── Today's Summary Cards ─────────────────────────────────
+
+.section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ion-color-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 10px 16px 0;
+}
+
+.summary-grid {
+  padding: 0 8px;
+
+  ion-col {
+    padding: 3px;
+  }
+}
+
+.summary-card {
+  margin: 0;
+  background: var(--ion-card-background);
+  border-radius: 12px;
+  text-align: center;
+
+  ion-card-content {
+    padding: 12px 8px;
+  }
+}
+
+.summary-icon {
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+.summary-val {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ion-text-color);
+}
+
+.summary-label {
+  font-size: 0.65rem;
+  color: var(--ion-color-medium);
+  margin-top: 2px;
+}

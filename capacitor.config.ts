@@ -1,9 +1,14 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
-  appName: 'srne-solar-monitor',
-  webDir: 'www'
+  appId: 'com.poc.srnesolarmomitor',
+  appName: 'SRNE Solar Monitor',
+  webDir: 'www',
+  plugins: {
+    BarcodeScanner: {
+      googleBarcodeScannerModuleInstallState: 'prompt'
+    }
+  }
 };
 
 export default config;

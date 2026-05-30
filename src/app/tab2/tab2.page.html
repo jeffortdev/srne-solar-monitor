@@ -1,17 +1,66 @@
-<ion-header [translucent]="true">
+<ion-header>
   <ion-toolbar>
-    <ion-title>
-      Tab 2
-    </ion-title>
+    <ion-title>Reports</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="shareChart()" aria-label="Share chart">
+        <ion-icon slot="icon-only" name="share-outline" aria-hidden="true"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Tab 2</ion-title>
-    </ion-toolbar>
-  </ion-header>
+  <div class="reports-wrap">
 
-  <app-explore-container name="Tab 2 page"></app-explore-container>
+    <!-- ── Date Range Selector ── -->
+    <div class="range-row">
+      <ion-segment [(ngModel)]="selectedRange" (ionChange)="onRangeChange()" aria-label="Report date range">
+        <ion-segment-button value="today" aria-label="Today">
+          <ion-label>Today</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="7d" aria-label="Last 7 days">
+          <ion-label>7 Days</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="30d" aria-label="Last 30 days">
+          <ion-label>30 Days</ion-label>
+        </ion-segment-button>
+      </ion-segment>
+    </div>
+
+    <!-- ── Dataset Toggles ── -->
+    <div class="toggle-row" role="group" aria-label="Chart dataset visibility">
+      <ion-chip
+        *ngFor="let ds of datasets"
+        [style.border-color]="ds.color"
+        [class.active-chip]="ds.visible"
+        (click)="toggleDataset(ds)"
+        [attr.aria-pressed]="ds.visible"
+        [attr.aria-label]="ds.label + ' toggle'">
+        <span class="chip-dot" [style.background]="ds.color" aria-hidden="true"></span>
+        {{ ds.label }}
+      </ion-chip>
+    </div>
+
+    <!-- ── Chart Canvas ── -->
+    <div class="chart-wrap" aria-label="Power history chart">
+      <canvas #chartCanvas role="img" [attr.aria-label]="chartAriaLabel"></canvas>
+    </div>
+
+    <!-- ── No-data state ── -->
+    <div class="no-data" *ngIf="noData" role="status">
+      <ion-icon name="bar-chart-outline" aria-hidden="true"></ion-icon>
+      <p>No data yet for this period.</p>
+      <p class="no-data-hint">Data is collected automatically while the Dashboard tab is open.</p>
+    </div>
+
+    <!-- ── Export ── -->
+    <div class="export-row">
+      <ion-button expand="block" fill="outline" color="primary" (click)="shareChart()" aria-label="Export chart image">
+        <ion-icon slot="start" name="share-outline" aria-hidden="true"></ion-icon>
+        Export Chart
+      </ion-button>
+    </div>
+
+  </div>
 </ion-content>
+

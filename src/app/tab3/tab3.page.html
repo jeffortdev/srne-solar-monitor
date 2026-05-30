@@ -1,17 +1,156 @@
-<ion-header [translucent]="true">
+<ion-header>
   <ion-toolbar>
-    <ion-title>
-      Tab 3
-    </ion-title>
+    <ion-title>Settings</ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Tab 3</ion-title>
-    </ion-toolbar>
-  </ion-header>
 
-  <app-explore-container name="Tab 3 page"></app-explore-container>
+  <!-- ── Device Manager ── -->
+  <ion-list-header>
+    <ion-label>Devices</ion-label>
+  </ion-list-header>
+
+  <ion-list>
+    <ion-item-sliding *ngFor="let device of devices" [attr.aria-label]="'Device ' + device.name">
+      <ion-item [button]="true" (click)="setActive(device.id)"
+        [attr.aria-label]="'Select device ' + device.name">
+        <ion-icon slot="start"
+          [name]="device.id === activeDeviceId ? 'radio-button-on' : 'radio-button-off'"
+          [color]="device.id === activeDeviceId ? 'primary' : 'medium'"
+          aria-hidden="true">
+        </ion-icon>
+        <ion-label>
+          <h3>{{ device.name }}</h3>
+          <p>{{ device.ip }}:{{ device.port }} &middot; Slave {{ device.slaveId }}</p>
+        </ion-label>
+        <ion-note slot="end" *ngIf="device.id === activeDeviceId" color="primary">Active</ion-note>
+      </ion-item>
+      <ion-item-options side="end">
+        <ion-item-option color="danger" (click)="deleteDevice(device.id)"
+          aria-label="Delete device {{ device.name }}">
+          <ion-icon slot="icon-only" name="trash-outline" aria-hidden="true"></ion-icon>
+        </ion-item-option>
+      </ion-item-options>
+    </ion-item-sliding>
+
+    <ion-item *ngIf="!devices.length">
+      <ion-label class="no-devices-msg" color="medium">No devices added yet.</ion-label>
+    </ion-item>
+  </ion-list>
+
+  <ion-button expand="block" fill="outline" color="primary" class="add-btn"
+    (click)="openAddDevice()" aria-label="Add new device">
+    <ion-icon slot="start" name="add-outline" aria-hidden="true"></ion-icon>
+    Add Device
+  </ion-button>
+
+  <!-- ── Connection Test ── -->
+  <ion-button expand="block" fill="clear" color="secondary" class="test-btn"
+    [disabled]="!activeDeviceId || testingConnection"
+    (click)="testConnection()"
+    aria-label="Test connection to active device">
+    <ion-icon slot="start" name="pulse-outline" aria-hidden="true"></ion-icon>
+    <span *ngIf="!testingConnection">Test Connection</span>
+    <span *ngIf="testingConnection">Testing...</span>
+  </ion-button>
+  <div class="test-result" *ngIf="testResult" role="status" [attr.aria-live]="'polite'">
+    <ion-icon [name]="testResult.ok ? 'checkmark-circle-outline' : 'alert-circle-outline'"
+      [color]="testResult.ok ? 'success' : 'danger'" aria-hidden="true"></ion-icon>
+    {{ testResult.message }}
+  </div>
+
+  <!-- ── Display Preferences ── -->
+  <ion-list-header>
+    <ion-label>Display</ion-label>
+  </ion-list-header>
+
+  <ion-list>
+    <ion-item aria-label="Show grid node in diagram">
+      <ion-label>Show Grid Node</ion-label>
+      <ion-toggle [(ngModel)]="showGrid" (ionChange)="saveDisplayPrefs()"
+        aria-label="Show grid node toggle"></ion-toggle>
+    </ion-item>
+    <ion-item aria-label="Polling interval">
+      <ion-label>Poll Interval</ion-label>
+      <ion-select [(ngModel)]="pollInterval" (ionChange)="saveDisplayPrefs()"
+        interface="popover" aria-label="Polling interval">
+        <ion-select-option value="5">5 s</ion-select-option>
+        <ion-select-option value="10">10 s</ion-select-option>
+        <ion-select-option value="30">30 s</ion-select-option>
+      </ion-select>
+    </ion-item>
+  </ion-list>
+
+  <!-- ── About ── -->
+  <ion-list-header>
+    <ion-label>About</ion-label>
+  </ion-list-header>
+  <ion-list>
+    <ion-item>
+      <ion-label>
+        <h3>SRNE Solar Monitor</h3>
+        <p>Connects via Modbus TCP to SRNE ML/MC series charge controllers through the SRNE WiFi dongle (TCP 8899).</p>
+      </ion-label>
+    </ion-item>
+    <ion-item>
+      <ion-label>Version</ion-label>
+      <ion-note slot="end">1.0.0</ion-note>
+    </ion-item>
+  </ion-list>
+
+  <!-- ── Add Device Modal ── -->
+  <ion-modal [isOpen]="showAddModal" (didDismiss)="closeAddDevice()" aria-label="Add device dialog">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>{{ editingDevice ? 'Edit Device' : 'Add Device' }}</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="closeAddDevice()" aria-label="Close dialog">
+              <ion-icon slot="icon-only" name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="modal-content">
+        <ion-list>
+          <ion-item>
+            <ion-label position="stacked">Device Name <span aria-hidden="true">*</span></ion-label>
+            <ion-input [(ngModel)]="form.name" placeholder="My Solar System"
+              aria-label="Device name" required></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">IP Address <span aria-hidden="true">*</span></ion-label>
+            <ion-input [(ngModel)]="form.ip" placeholder="192.168.4.1"
+              inputmode="url" aria-label="IP address" required></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Port</ion-label>
+            <ion-input [(ngModel)]="form.port" type="number" placeholder="8899"
+              aria-label="Port number"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Modbus Slave ID</ion-label>
+            <ion-input [(ngModel)]="form.slaveId" type="number" placeholder="1"
+              aria-label="Modbus slave ID"></ion-input>
+          </ion-item>
+        </ion-list>
+
+        <ion-button expand="block" fill="outline" color="secondary" class="qr-btn"
+          (click)="scanQr()" aria-label="Scan QR code from SRNE WiFi dongle">
+          <ion-icon slot="start" name="qr-code-outline" aria-hidden="true"></ion-icon>
+          Scan QR Code
+        </ion-button>
+        <p class="qr-hint">Scan the QR code on the SRNE WiFi dongle to auto-fill IP and port.</p>
+
+        <ion-button expand="block" color="primary" class="save-btn"
+          [disabled]="!form.name || !form.ip"
+          (click)="saveDevice()" aria-label="Save device">
+          Save
+        </ion-button>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
+
 </ion-content>
+

@@ -1,17 +1,195 @@
-<ion-header [translucent]="true">
+<ion-header>
   <ion-toolbar>
     <ion-title>
-      Tab 1
+      <span class="app-title">&#9728;&#65039; SRNE Solar Monitor</span>
     </ion-title>
+    <ion-buttons slot="end">
+      <ion-badge [color]="connected ? 'success' : 'medium'" class="status-badge"
+        [attr.aria-label]="connected ? 'Connected live' : 'Demo mode'">
+        {{ connected ? 'Live' : 'Demo' }}
+      </ion-badge>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Tab 1</ion-title>
-    </ion-toolbar>
-  </ion-header>
+  <div class="dashboard-wrap">
 
-  <app-explore-container name="Tab 1 page"></app-explore-container>
+    <!-- Device / mode bar -->
+    <div class="device-bar" *ngIf="deviceName">
+      <ion-icon name="hardware-chip-outline" aria-hidden="true"></ion-icon>
+      {{ deviceName }}
+      <span class="charging-state-label">&middot; {{ chargingStateLabel }}</span>
+    </div>
+    <div class="device-bar mock-notice" *ngIf="!deviceName">
+      <ion-icon name="information-circle-outline" aria-hidden="true"></ion-icon>
+      Demo mode &mdash; add a device in Settings to connect
+    </div>
+
+    <!-- ── Power Flow SVG Diagram ── -->
+    <div class="flow-container" role="img" [attr.aria-label]="diagramAriaLabel">
+      <svg viewBox="0 0 320 260" xmlns="http://www.w3.org/2000/svg" class="flow-svg">
+
+        <!-- Solar to Battery flow line -->
+        <path d="M 80 72 L 80 162"
+          class="flow-path"
+          [class.flow-active]="isSolarChargingBattery"
+          stroke="var(--srne-solar-color)" aria-hidden="true"/>
+
+        <!-- Solar to Home flow line -->
+        <path d="M 100 60 Q 190 10 220 88"
+          class="flow-path"
+          [class.flow-active]="isSolarPoweringLoad"
+          stroke="var(--srne-solar-color)" aria-hidden="true"/>
+
+        <!-- Battery to Home flow line -->
+        <path d="M 100 180 Q 190 230 220 180"
+          class="flow-path"
+          [class.flow-active]="isBatteryPoweringLoad"
+          stroke="var(--srne-battery-color)" aria-hidden="true"/>
+
+        <!-- Grid to Home (optional) -->
+        <path *ngIf="showGrid"
+          d="M 230 52 L 230 90"
+          class="flow-path flow-active"
+          stroke="var(--srne-grid-color)" aria-hidden="true"/>
+
+        <!-- ── Solar Node ── -->
+        <g transform="translate(60,36)" aria-label="Solar Panel node">
+          <rect x="-32" y="-26" width="64" height="54" rx="12"
+            fill="var(--srne-node-bg)" stroke="var(--srne-solar-color)" stroke-width="2"/>
+          <text x="0" y="-8" text-anchor="middle" font-size="16" aria-hidden="true">&#9728;&#65039;</text>
+          <text x="0" y="8" text-anchor="middle" class="node-value">{{ data?.solarPanelPower ?? 0 }}W</text>
+          <text x="0" y="20" text-anchor="middle" class="node-label">Solar</text>
+        </g>
+
+        <!-- ── Battery Node ── -->
+        <g transform="translate(60,182)" [attr.aria-label]="'Battery ' + (data?.batterySoc ?? 0) + ' percent'">
+          <rect x="-32" y="-26" width="64" height="54" rx="12"
+            fill="var(--srne-node-bg)" [attr.stroke]="batteryStrokeColor" stroke-width="2"/>
+          <!-- SOC bar background -->
+          <rect x="-22" y="14" width="44" height="7" rx="3" fill="#222" aria-hidden="true"/>
+          <!-- SOC bar fill -->
+          <rect x="-22" y="14"
+            [attr.width]="44 * ((data?.batterySoc ?? 0) / 100)"
+            height="7" rx="3"
+            [attr.fill]="batteryStrokeColor" aria-hidden="true"/>
+          <text x="0" y="-8" text-anchor="middle" font-size="14" aria-hidden="true">&#128267;</text>
+          <text x="0" y="8" text-anchor="middle" class="node-value">{{ data?.batterySoc ?? 0 }}%</text>
+          <text x="0" y="-18" text-anchor="middle" class="node-label">{{ data?.batteryVoltage?.toFixed(1) ?? '--' }}V</text>
+        </g>
+
+        <!-- ── Home / Load Node ── -->
+        <g transform="translate(248,134)" aria-label="Home Load node">
+          <rect x="-32" y="-26" width="64" height="54" rx="12"
+            fill="var(--srne-node-bg)" stroke="var(--srne-load-color)" stroke-width="2"/>
+          <text x="0" y="-8" text-anchor="middle" font-size="16" aria-hidden="true">&#127968;</text>
+          <text x="0" y="8" text-anchor="middle" class="node-value">{{ data?.loadPower ?? 0 }}W</text>
+          <text x="0" y="20" text-anchor="middle" class="node-label">Load</text>
+        </g>
+
+        <!-- ── Grid Node (optional) ── -->
+        <g *ngIf="showGrid" transform="translate(248,36)" aria-label="Power Grid node">
+          <rect x="-32" y="-26" width="64" height="54" rx="12"
+            fill="var(--srne-node-bg)" stroke="var(--srne-grid-color)" stroke-width="2"/>
+          <text x="0" y="-8" text-anchor="middle" font-size="16" aria-hidden="true">&#9889;</text>
+          <text x="0" y="8" text-anchor="middle" class="node-value">Grid</text>
+          <text x="0" y="20" text-anchor="middle" class="node-label">Mains</text>
+        </g>
+
+        <!-- MPPT controller hub -->
+        <circle cx="80" cy="128" r="9" fill="var(--srne-solar-color)" opacity="0.75"
+          aria-label="MPPT charge controller"/>
+        <text x="95" y="132" class="node-label small-label" aria-hidden="true">MPPT</text>
+
+      </svg>
+    </div>
+
+    <!-- ── Live Stats ── -->
+    <ion-grid class="stats-grid">
+      <ion-row>
+        <ion-col size="3">
+          <div class="stat-chip" style="border-color: var(--srne-solar-color)"
+            [attr.aria-label]="'Solar power ' + (data?.solarPanelPower ?? 0) + ' watts'">
+            <div class="stat-val" style="color: var(--srne-solar-color)">
+              {{ data?.solarPanelPower ?? 0 }}<span class="stat-unit">W</span>
+            </div>
+            <div class="stat-name">Solar</div>
+          </div>
+        </ion-col>
+        <ion-col size="3">
+          <div class="stat-chip" [style.border-color]="batteryStrokeColor"
+            [attr.aria-label]="'Battery ' + (data?.batterySoc ?? 0) + ' percent'">
+            <div class="stat-val" [style.color]="batteryStrokeColor">
+              {{ data?.batterySoc ?? 0 }}<span class="stat-unit">%</span>
+            </div>
+            <div class="stat-name">Battery</div>
+          </div>
+        </ion-col>
+        <ion-col size="3">
+          <div class="stat-chip" style="border-color: var(--srne-load-color)"
+            [attr.aria-label]="'Load power ' + (data?.loadPower ?? 0) + ' watts'">
+            <div class="stat-val" style="color: var(--srne-load-color)">
+              {{ data?.loadPower ?? 0 }}<span class="stat-unit">W</span>
+            </div>
+            <div class="stat-name">Load</div>
+          </div>
+        </ion-col>
+        <ion-col size="3">
+          <div class="stat-chip" style="border-color: #a0a0a0"
+            [attr.aria-label]="'Battery voltage ' + (data?.batteryVoltage?.toFixed(1) ?? '--') + ' volts'">
+            <div class="stat-val" style="color: #a0a0a0">
+              {{ data?.batteryVoltage?.toFixed(1) ?? '--' }}<span class="stat-unit">V</span>
+            </div>
+            <div class="stat-name">Batt V</div>
+          </div>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+
+    <!-- ── Today's Summary ── -->
+    <div class="section-title">Today's Summary</div>
+    <ion-grid class="summary-grid">
+      <ion-row>
+        <ion-col size="6">
+          <ion-card class="summary-card" aria-label="Daily energy generated">
+            <ion-card-content>
+              <div class="summary-icon" aria-hidden="true">&#9889;</div>
+              <div class="summary-val">{{ data?.dailyGenerated?.toFixed(2) ?? '0.00' }} kWh</div>
+              <div class="summary-label">Generated</div>
+            </ion-card-content>
+          </ion-card>
+        </ion-col>
+        <ion-col size="6">
+          <ion-card class="summary-card" aria-label="Daily energy consumed">
+            <ion-card-content>
+              <div class="summary-icon" aria-hidden="true">&#127968;</div>
+              <div class="summary-val">{{ data?.dailyConsumed?.toFixed(2) ?? '0.00' }} kWh</div>
+              <div class="summary-label">Consumed</div>
+            </ion-card-content>
+          </ion-card>
+        </ion-col>
+        <ion-col size="6">
+          <ion-card class="summary-card" aria-label="Daily battery charged">
+            <ion-card-content>
+              <div class="summary-icon" aria-hidden="true">&#128267;</div>
+              <div class="summary-val">{{ data?.dailyChargeAh?.toFixed(1) ?? '0.0' }} Ah</div>
+              <div class="summary-label">Charged</div>
+            </ion-card-content>
+          </ion-card>
+        </ion-col>
+        <ion-col size="6">
+          <ion-card class="summary-card" aria-label="Daily battery discharged">
+            <ion-card-content>
+              <div class="summary-icon" aria-hidden="true">&#128202;</div>
+              <div class="summary-val">{{ data?.dailyDischargeAh?.toFixed(1) ?? '0.0' }} Ah</div>
+              <div class="summary-label">Discharged</div>
+            </ion-card-content>
+          </ion-card>
+        </ion-col>
+      </ion-row>
+    </ion-grid>
+
+  </div>
 </ion-content>
+

@@ -1,2 +1,50 @@
-// For information on how to create your own theme, please refer to:
-// https://ionicframework.com/docs/theming/
+// SRNE Solar Monitor – Ionic Theme Variables
+// Primary: solar orange, dark background
+
+:root {
+  --ion-color-primary: #f4a825;
+  --ion-color-primary-rgb: 244, 168, 37;
+  --ion-color-primary-contrast: #000000;
+  --ion-color-primary-contrast-rgb: 0, 0, 0;
+  --ion-color-primary-shade: #d79421;
+  --ion-color-primary-tint: #f5b13b;
+
+  --ion-color-secondary: #3dc2ff;
+  --ion-color-secondary-rgb: 61, 194, 255;
+  --ion-color-secondary-contrast: #000000;
+  --ion-color-secondary-shade: #36abe0;
+  --ion-color-secondary-tint: #50c8ff;
+
+  --ion-color-success: #2dd36f;
+  --ion-color-warning: #ffc409;
+  --ion-color-danger: #eb445a;
+
+  --ion-background-color: #1a1a2e;
+  --ion-background-color-rgb: 26, 26, 46;
+
+  --ion-text-color: #e8e8e8;
+  --ion-text-color-rgb: 232, 232, 232;
+
+  --ion-card-background: #16213e;
+  --ion-item-background: #0f3460;
+  --ion-toolbar-background: #16213e;
+  --ion-tab-bar-background: #16213e;
+  --ion-tab-bar-border-color: #f4a82530;
+
+  --srne-solar-color: #f4a825;
+  --srne-battery-color: #2dd36f;
+  --srne-load-color: #3dc2ff;
+  --srne-grid-color: #eb445a;
+  --srne-flow-color: #f4a82590;
+  --srne-node-bg: #0f3460;
+  --srne-node-border: #f4a82550;
+}
+
+// Reduce motion support
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
