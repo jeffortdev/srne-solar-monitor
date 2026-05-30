@@ -57,13 +57,38 @@ export class ModbusTcpService {
       const { SocketConnect } = await import('capacitor-tcp-connect');
       const request = this.buildRequest(device.slaveId, startReg, count);
       const text = String.fromCharCode(...request);
-      const result = await (SocketConnect as any).open({
+      
+      // Debug: show hex representation of request
+      const hexRequest = Array.from(request).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+      console.log(`[Modbus] Connecting to ${device.ip}:${device.port}, SlaveID: ${device.slaveId}`);
+      console.log(`[Modbus] Reading register 0x${startReg.toString(16).toUpperCase().padStart(4, '0')}, count: ${count}`);
+      console.log(`[Modbus] Sending frame (hex): ${hexRequest}`);
+      
+      // Set a timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Socket timeout (5s)')), 5000)
+      );
+      
+      const socketPromise = (SocketConnect as any).open({
         ip: device.ip,
         port: String(device.port),
         text
       });
+      
+      const result = await Promise.race([socketPromise, timeoutPromise]);
+      
+      console.log('[Modbus] Response received:', result);
+      if (result?.value) {
+        const hexResponse = Array.from(result.value as string).map((c: string) => c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')).join(' ');
+        console.log('[Modbus] Response (hex):', hexResponse);
+      }
       return this.parseResponse(result.value, count);
-    } catch {
+    } catch (e: any) {
+      console.error('[Modbus] Connection error:', {
+        message: e?.message,
+        code: e?.code,
+        error: e
+      });
       return null;
     }
   }

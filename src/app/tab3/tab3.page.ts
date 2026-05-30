@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { BarcodeScanner, BarcodeFormat } from '@capacitor-mlkit/barcode-scanning';
+import { ToastController } from '@ionic/angular';
 import { DeviceConfig } from '../models/srne.models';
 import { SettingsService } from '../services/settings.service';
 import { SrneDataService } from '../services/srne-data.service';
@@ -35,7 +36,8 @@ export class Tab3Page implements OnInit {
   constructor(
     private settings: SettingsService,
     private srne: SrneDataService,
-    private modbus: ModbusTcpService
+    private modbus: ModbusTcpService,
+    private toastController: ToastController
   ) {}
 
   ngOnInit(): void {
@@ -100,20 +102,84 @@ export class Tab3Page implements OnInit {
 
   async scanQr(): Promise<void> {
     try {
+      console.log('QR scan: Requesting camera permissions...');
       const granted = await BarcodeScanner.requestPermissions();
-      if (granted.camera !== 'granted' && granted.camera !== 'limited') return;
+      console.log('Camera permissions:', granted);
 
+      if (granted.camera !== 'granted' && granted.camera !== 'limited') {
+        await this.showToast('Camera permission denied. Please enable it in Settings.', 'warning');
+        console.warn('Camera permission denied:', granted.camera);
+        return;
+      }
+
+      console.log('QR scan: Starting barcode scan...');
       const result = await BarcodeScanner.scan({
         formats: [BarcodeFormat.QrCode]
       });
 
+      console.log('QR scan result:', result);
+
       if (result.barcodes?.length) {
         const raw = result.barcodes[0].rawValue ?? '';
-        this.parseQrValue(raw);
+        console.log('QR value scanned:', raw);
+        
+        const parsed = this.parseQrValue(raw);
+        if (parsed) {
+          console.log('QR parsed successfully:', parsed);
+          // Auto-save device after successful QR parse
+          await this.autoSaveDevice(parsed);
+        } else {
+          await this.showToast('Could not parse QR code. Try manual entry.', 'warning');
+        }
+      } else {
+        await this.showToast('No QR code detected. Try again.', 'warning');
+        console.warn('No barcodes found in scan result');
       }
     } catch (e: any) {
-      console.warn('QR scan error:', e);
+      console.error('QR scan error:', e);
+      await this.showToast(
+        `Scan failed: ${e?.message || 'Unknown error'}`,
+        'danger'
+      );
     }
+  }
+
+  private async autoSaveDevice(parsed: { ip: string; port: number; name?: string }): Promise<void> {
+    // Auto-generate device name if not provided
+    const deviceName = parsed.name || `SRNE ${parsed.ip}`;
+    
+    const id = crypto.randomUUID();
+    const device: DeviceConfig = {
+      id,
+      name: deviceName.trim(),
+      ip: parsed.ip.trim(),
+      port: parsed.port || 8899,
+      slaveId: 1
+    };
+
+    console.log('Auto-saving device:', device);
+    await this.settings.saveDevice(device);
+    
+    // Set as active device if none is active
+    if (!this.settings.settings.activeDeviceId) {
+      await this.settings.setActiveDevice(id);
+    }
+
+    this.loadSettings();
+    this.srne.restartPolling();
+    this.closeAddDevice();
+    
+    await this.showToast(`Device "${deviceName}" added successfully!`, 'success');
+  }
+
+  private async showToast(message: string, color: 'success' | 'warning' | 'danger' = 'warning'): Promise<void> {
+    const toast = await this.toastController.create({
+      message,
+      duration: 2000,
+      position: 'bottom',
+      color
+    });
+    await toast.present();
   }
 
   /**
@@ -122,21 +188,30 @@ export class Tab3Page implements OnInit {
    *  - "192.168.4.1:8899"
    *  - JSON: {"ip":"192.168.4.1","port":8899}
    *  - WiFi credentials string with IP embedded
+   * 
+   * Returns parsed config or null if invalid
    */
-  private parseQrValue(raw: string): void {
+  private parseQrValue(raw: string): { ip: string; port: number; name?: string } | null {
     try {
       const parsed = JSON.parse(raw);
-      if (parsed.ip) this.form.ip = parsed.ip;
-      if (parsed.port) this.form.port = parsed.port;
-      if (parsed.name) this.form.name = parsed.name;
-      return;
+      if (parsed.ip) {
+        return {
+          ip: parsed.ip,
+          port: parsed.port || 8899,
+          name: parsed.name
+        };
+      }
     } catch { /* not JSON */ }
 
     const ipPortMatch = raw.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):?(\d{4,5})?/);
     if (ipPortMatch) {
-      this.form.ip = ipPortMatch[1];
-      if (ipPortMatch[2]) this.form.port = parseInt(ipPortMatch[2], 10);
+      return {
+        ip: ipPortMatch[1],
+        port: ipPortMatch[2] ? parseInt(ipPortMatch[2], 10) : 8899
+      };
     }
+
+    return null;
   }
 
   // ── Connection test ───────────────────────────────────────
@@ -149,14 +224,36 @@ export class Tab3Page implements OnInit {
     this.testResult = null;
     const start = Date.now();
 
-    const result = await this.modbus.readHoldingRegisters(device, 0x0100, 1);
-    const elapsed = Date.now() - start;
+    console.log(`[Test] Starting connection test to ${device.ip}:${device.port}`);
 
+    // Try multiple registers to find one that works
+    // 0x0100 = Battery SOC, 0x0101 = Battery Voltage, 0x010F = PV Power, 0x3200 = Daily Generation
+    const registersToTry = [0x0100, 0x0101, 0x010F, 0x3200, 0x0000, 0x0001];
+    let result = null;
+    let testedRegs = '';
+
+    for (const reg of registersToTry) {
+      console.log(`[Test] Trying register 0x${reg.toString(16).toUpperCase().padStart(4, '0')}`);
+      result = await this.modbus.readHoldingRegisters(device, reg, 1);
+      testedRegs += `0x${reg.toString(16).toUpperCase().padStart(4, '0')} `;
+      if (result !== null) {
+        console.log(`[Test] ✓ Register 0x${reg.toString(16).toUpperCase().padStart(4, '0')} responded with:`, result);
+        break;
+      }
+    }
+
+    const elapsed = Date.now() - start;
     this.testingConnection = false;
+
     if (result !== null) {
-      this.testResult = { ok: true, message: `Connected in ${elapsed}ms` };
+      this.testResult = { ok: true, message: `Connected in ${elapsed}ms (value: ${result[0]})` };
     } else {
-      this.testResult = { ok: false, message: 'Could not reach device — check IP and WiFi' };
+      this.testResult = { 
+        ok: false, 
+        message: `No response from device. Check console logs. Tried: ${testedRegs.trim()}`
+      };
+      console.error('[Test] All registers failed. Check device IP, port, and Modbus compatibility.');
+      console.error('[Test] Check console logs above for [Modbus] error details.');
     }
   }
 

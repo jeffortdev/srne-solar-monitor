@@ -8,7 +8,7 @@
     "start": "npx ionic serve",
     "build": "npx ionic build",
     "build:prod": "npx ionic build --prod",
-    "build:apk": "npx ionic build --prod && npx cap sync android && npx cap build android",
+    "build:apk": "npx ionic build --prod && npx cap sync android && npx cap build android --androidreleasetype APK -- -x skipSigningConfigs",
     "build:sign": "npx ionic build --prod && npx cap sync android && npx cap build android --keystorepath srne-release.keystore --keystorealias srne --androidreleasetype APK",
     "keystore:generate": "keytool -genkeypair -v -keystore srne-release.keystore -alias srne -keyalg RSA -keysize 2048 -validity 10000",
     "cap:android": "npx cap open android",
