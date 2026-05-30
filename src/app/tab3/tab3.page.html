@@ -90,7 +90,13 @@
     <ion-item>
       <ion-label>
         <h3>SRNE Solar Monitor</h3>
-        <p>Connects via Modbus TCP to SRNE ML/MC series charge controllers through the SRNE WiFi dongle (TCP 8899).</p>
+        <p>Designed for the <strong>SRNE HESP4860S100-H</strong> hybrid inverter. Connects via Modbus TCP through the external SRNE WiFi RS485 dongle (TCP port 8899).</p>
+      </ion-label>
+    </ion-item>
+    <ion-item>
+      <ion-label>
+        <h3>Connection Requirement</h3>
+        <p>An external SRNE WiFi RS485 dongle must be connected to the RS485/Modbus port of the HESP4860S100-H. The dongle broadcasts a WiFi hotspot (SSID: <em>AP_XXXXXX</em>) — connect your phone to it before adding a device.</p>
       </ion-label>
     </ion-item>
     <ion-item>
@@ -136,12 +142,19 @@
           </ion-item>
         </ion-list>
 
+        <ion-item lines="none" class="hint-item">
+          <ion-icon slot="start" name="information-circle-outline" color="medium" aria-hidden="true"></ion-icon>
+          <ion-label class="ion-text-wrap" color="medium">
+            <p>Requires the external SRNE WiFi RS485 dongle connected to the <strong>HESP4860S100-H</strong> RS485 port. Default IP: <code>192.168.4.1</code>, Port: <code>8899</code>, Slave ID: <code>1</code>.</p>
+          </ion-label>
+        </ion-item>
+
         <ion-button expand="block" fill="outline" color="secondary" class="qr-btn"
-          (click)="scanQr()" aria-label="Scan QR code from SRNE WiFi dongle">
+          (click)="scanQr()" aria-label="Scan QR code from SRNE external WiFi dongle">
           <ion-icon slot="start" name="qr-code-outline" aria-hidden="true"></ion-icon>
-          Scan QR Code
+          Scan Dongle QR Code
         </ion-button>
-        <p class="qr-hint">Scan the QR code on the SRNE WiFi dongle to auto-fill IP and port.</p>
+        <p class="qr-hint">Scan the QR code on the external SRNE WiFi RS485 dongle to auto-fill IP and port.</p>
 
         <ion-button expand="block" color="primary" class="save-btn"
           [disabled]="!form.name || !form.ip"

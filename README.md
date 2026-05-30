@@ -1,6 +1,6 @@
 # SRNE Solar Monitor
 
-A mobile app for monitoring SRNE ML/MC series solar charge controllers via the SRNE WiFi dongle.
+A mobile app for monitoring the **SRNE HESP4860S100-H** hybrid inverter via an external SRNE WiFi RS485 dongle.
 Built with Ionic + Angular + Capacitor.
 
 ## Features
@@ -93,18 +93,19 @@ npm run build:sign
 
 ---
 
-## How to Connect to an SRNE Device
+## How to Connect to the HESP4860S100-H
 
 ### WiFi Dongle Setup
 
-1. Power on your SRNE charge controller with the WiFi dongle attached
-2. The dongle creates a WiFi hotspot — connect your phone to it (SSID usually `SRNE_XXXXXX`)
-3. Open the app → **Settings** tab → **Add Device**
-4. Enter:
+1. Ensure the external SRNE WiFi RS485 dongle is plugged into the **RS485/Modbus port** of the HESP4860S100-H
+2. Power on the inverter — the dongle will broadcast a WiFi hotspot (SSID: `AP_XXXXXX` where XXXXXX is the last 6 digits of its MAC address)
+3. Connect your phone to the dongle's WiFi hotspot
+4. Open the app → **Settings** tab → **Add Device**
+5. Enter:
    - **IP Address**: `192.168.4.1` (default dongle AP IP)
    - **Port**: `8899`
    - **Modbus Slave ID**: `1`
-5. Or tap **Scan QR Code** to scan the QR printed on the dongle
+6. Or tap **Scan Dongle QR Code** to scan the QR code printed on the dongle
 
 ### Connected to Home WiFi
 
@@ -112,9 +113,9 @@ If you've configured the dongle to join your home network:
 - Use the IP assigned by your router (check router admin panel)
 - Port remains `8899`
 
-### Supported Models
+### Supported Model
 
-SRNE ML series (ML1024, ML2430, ML4860, etc.) and MC series with the SR-MR2410-MC accessory WiFi module.
+**SRNE HESP4860S100-H** (48V, 60A MPPT, 100A hybrid inverter) with the external SRNE WiFi RS485 dongle.
 
 ---
 
@@ -136,7 +137,7 @@ src/app/
 
 ---
 
-## Modbus Register Map (SRNE ML/MC)
+## Modbus Register Map (SRNE HESP4860S100-H)
 
 | Register | Description | Scale |
 |---|---|---|

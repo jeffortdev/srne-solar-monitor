@@ -2,7 +2,8 @@
 import { DeviceConfig } from '../models/srne.models';
 
 /**
- * ModbusTcpService — sends Modbus RTU frames over TCP to the SRNE WiFi dongle.
+ * ModbusTcpService — sends Modbus RTU frames over TCP to the external SRNE WiFi RS485 dongle
+ * connected to the HESP4860S100-H RS485/Modbus port.
  * Uses capacitor-tcp-connect (SocketConnect.open) on native Android/iOS.
  * Falls back to null on web browser or on any connection error.
  */
