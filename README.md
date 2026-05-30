@@ -95,27 +95,38 @@ npm run build:sign
 
 ## How to Connect to the HESP4860S100-H
 
-### WiFi Dongle Setup
+This app uses the **SolarmanV5 protocol** (port 8899) to communicate with the inverter via the **Solarman LSW-5 WiFi data logger dongle**.
 
-1. Ensure the external SRNE WiFi RS485 dongle is plugged into the **RS485/Modbus port** of the HESP4860S100-H
-2. Power on the inverter — the dongle will broadcast a WiFi hotspot (SSID: `AP_XXXXXX` where XXXXXX is the last 6 digits of its MAC address)
-3. Connect your phone to the dongle's WiFi hotspot
-4. Open the app → **Settings** tab → **Add Device**
-5. Enter:
-   - **IP Address**: `192.168.4.1` (default dongle AP IP)
+### Step 1 — Find Your Logger Serial Number
+
+1. Plug the **LSW-5 dongle** into the RS485 communication port of the HESP4860S100-H
+2. Power on the inverter
+3. The LSW-5 creates a WiFi hotspot — connect your phone or PC to it
+4. Open a browser and go to `http://192.168.10.100` (or the IP shown in the LSW-5 manual)
+5. Log in with **username: `admin`** and **password: `admin`** (default)
+6. Navigate to **Device Information** and note the **Logger Serial Number** (e.g. `1720747149`)
+
+### Step 2 — Add the Device in the App
+
+1. Ensure your phone is connected to the LSW-5 WiFi hotspot (or the same network as the dongle)
+2. Open the app → **Settings** tab → **Add Device**
+3. Enter:
+   - **IP Address**: `192.168.10.100` (or your dongle’s IP)
    - **Port**: `8899`
+   - **Logger Serial Number**: from Step 1 above
    - **Modbus Slave ID**: `1`
-6. Or tap **Scan Dongle QR Code** to scan the QR code printed on the dongle
+   - **Username / Password**: `admin` / `admin` (stored for reference)
+4. Or tap **Scan LSW-5 QR Code** — scans the QR on the dongle to auto-fill IP and serial number
 
-### Connected to Home WiFi
+### Connected via Home WiFi
 
-If you've configured the dongle to join your home network:
-- Use the IP assigned by your router (check router admin panel)
-- Port remains `8899`
+If the LSW-5 has been configured to join your home network:
+- Use the DHCP-assigned IP (check your router admin panel)
+- Port and serial number remain the same
 
 ### Supported Model
 
-**SRNE HESP4860S100-H** (48V, 60A MPPT, 100A hybrid inverter) with the external SRNE WiFi RS485 dongle.
+**SRNE HESP4860S100-H** (48V, 60A MPPT, 100A hybrid inverter) with the **Solarman LSW-5** WiFi data logger dongle.
 
 ---
 
@@ -126,7 +137,7 @@ src/app/
 ├── models/
 │   └── srne.models.ts         — SrneData, DeviceConfig, AppSettings interfaces
 ├── services/
-│   ├── modbus-tcp.service.ts  — Modbus RTU over TCP with CRC16 + capacitor-tcp-connect
+│   ├── modbus-tcp.service.ts  — SolarmanV5 protocol wrapper (port 8899) + capacitor-tcp-connect
 │   ├── srne-data.service.ts   — Polling service + mock data fallback
 │   ├── settings.service.ts    — Device config & app settings (Capacitor Preferences)
 │   └── history.service.ts     — Per-minute snapshots + hourly/daily aggregates
@@ -162,8 +173,10 @@ src/app/
 
 ## Troubleshooting
 
-**"Could not reach device"** — Ensure your phone is connected to the same WiFi network as the dongle. Test ping from phone.
+**"No response"** — Ensure your phone is connected to the same WiFi as the LSW-5 dongle. Verify the **Logger Serial Number** is correct (find it in the dongle's web UI at `http://<IP>` → Device Information).
 
-**Demo mode only** — Go to Settings → Add Device and enter the dongle IP. Demo mode is active when no device is configured or the connection fails.
+**Wrong serial number** — The SolarmanV5 protocol requires the exact serial number of the LSW-5. An incorrect serial causes silent timeouts. Recheck it on the dongle web interface.
+
+**Demo mode only** — Go to Settings → Add Device and fill in the IP, port (`8899`), and logger serial number. Demo mode is active when no device is configured or the connection fails.
 
 **Chart shows no data** — Data is collected while the Dashboard tab is open. Leave it open for a few minutes.

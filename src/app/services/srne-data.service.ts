@@ -5,7 +5,7 @@ import { ModbusTcpService } from './modbus-tcp.service';
 import { SettingsService } from './settings.service';
 import { HistoryService } from './history.service';
 
-// Modbus register base addresses (SRNE HESP4860S100-H via external WiFi RS485 dongle)
+// Modbus register base addresses (SRNE HESP4860S100-H via LSW-5 dongle, SolarmanV5 protocol)
 const REG_BATTERY_SOC     = 0x0100;
 const REG_BATTERY_VOLTAGE = 0x0101;
 const REG_BATTERY_CURRENT = 0x0102;

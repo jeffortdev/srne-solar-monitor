@@ -11,6 +11,9 @@ interface DeviceForm {
   ip: string;
   port: number;
   slaveId: number;
+  serialNumber: number;
+  username: string;
+  password: string;
 }
 
 @Component({
@@ -28,7 +31,7 @@ export class Tab3Page implements OnInit {
 
   showAddModal = false;
   editingDevice: DeviceConfig | null = null;
-  form: DeviceForm = { name: '', ip: '', port: 8899, slaveId: 1 };
+  form: DeviceForm = { name: '', ip: '', port: 8899, slaveId: 1, serialNumber: 0, username: 'admin', password: 'admin' };
 
   testingConnection = false;
   testResult: { ok: boolean; message: string } | null = null;
@@ -72,7 +75,7 @@ export class Tab3Page implements OnInit {
 
   openAddDevice(): void {
     this.editingDevice = null;
-    this.form = { name: '', ip: '', port: 8899, slaveId: 1 };
+    this.form = { name: '', ip: '', port: 8899, slaveId: 1, serialNumber: 0, username: 'admin', password: 'admin' };
     this.showAddModal = true;
   }
 
@@ -87,7 +90,10 @@ export class Tab3Page implements OnInit {
       name: this.form.name.trim(),
       ip: this.form.ip.trim(),
       port: Number(this.form.port) || 8899,
-      slaveId: Number(this.form.slaveId) || 1
+      slaveId: Number(this.form.slaveId) || 1,
+      serialNumber: Number(this.form.serialNumber) || 0,
+      username: this.form.username?.trim() || 'admin',
+      password: this.form.password || 'admin'
     };
     await this.settings.saveDevice(device);
     if (!this.settings.settings.activeDeviceId) {
@@ -126,8 +132,18 @@ export class Tab3Page implements OnInit {
         const parsed = this.parseQrValue(raw);
         if (parsed) {
           console.log('QR parsed successfully:', parsed);
-          // Auto-save device after successful QR parse
-          await this.autoSaveDevice(parsed);
+          // Populate the form so the user can review before saving
+          this.form.ip   = parsed.ip;
+          this.form.port = parsed.port || 8899;
+          if (parsed.serialNumber) this.form.serialNumber = parsed.serialNumber;
+          if (parsed.password)     this.form.password     = parsed.password;
+          if (parsed.name)         this.form.name         = parsed.name;
+          if (!this.form.name)     this.form.name         = `HESP4860S100-H (${parsed.ip})`;
+
+          const filled: string[] = ['IP'];
+          if (parsed.serialNumber) filled.push('Serial Number');
+          if (parsed.password)     filled.push('Password');
+          await this.showToast(`QR scanned — filled: ${filled.join(', ')}. Review and tap Save.`, 'success');
         } else {
           await this.showToast('Could not parse QR code. Try manual entry.', 'warning');
         }
@@ -144,9 +160,8 @@ export class Tab3Page implements OnInit {
     }
   }
 
-  private async autoSaveDevice(parsed: { ip: string; port: number; name?: string }): Promise<void> {
-    // Auto-generate device name if not provided
-    const deviceName = parsed.name || `SRNE ${parsed.ip}`;
+  private async autoSaveDevice(parsed: { ip: string; port: number; serialNumber?: number; password?: string; name?: string }): Promise<void> {
+    const deviceName = parsed.name || `HESP4860S100-H (${parsed.ip})`;
     
     const id = crypto.randomUUID();
     const device: DeviceConfig = {
@@ -154,7 +169,10 @@ export class Tab3Page implements OnInit {
       name: deviceName.trim(),
       ip: parsed.ip.trim(),
       port: parsed.port || 8899,
-      slaveId: 1
+      slaveId: 1,
+      serialNumber: parsed.serialNumber || 0,
+      username: 'admin',
+      password: parsed.password || 'admin'
     };
 
     console.log('Auto-saving device:', device);
@@ -169,7 +187,10 @@ export class Tab3Page implements OnInit {
     this.srne.restartPolling();
     this.closeAddDevice();
     
-    await this.showToast(`Device "${deviceName}" added successfully!`, 'success');
+    const notice = device.serialNumber
+      ? `Device "${deviceName}" added!`
+      : `Device "${deviceName}" added — please enter the serial number manually.`;
+    await this.showToast(notice, 'success');
   }
 
   private async showToast(message: string, color: 'success' | 'warning' | 'danger' = 'warning'): Promise<void> {
@@ -183,31 +204,67 @@ export class Tab3Page implements OnInit {
   }
 
   /**
-   * Parses QR payload from SRNE WiFi dongle.
-   * Common formats:
-   *  - "192.168.4.1:8899"
-   *  - JSON: {"ip":"192.168.4.1","port":8899}
-   *  - WiFi credentials string with IP embedded
-   * 
-   * Returns parsed config or null if invalid
+   * Parses QR payload from the LSW-5 dongle.
+   *
+   * Known formats:
+   *  1. JSON (most complete):
+   *       {"ap":"LSW-5_XXXXXX","ip":"10.10.100.254","port":8899,"sn":1720747149,"pwd":"12345678"}
+   *  2. Key-value pairs (common on sticker labels):
+   *       SN:1720747149,PWD:12345678,IP:10.10.100.254,PORT:8899
+   *       or with semicolons: SN:1720747149;PWD:12345678;IP:10.10.100.254
+   *  3. Colon-delimited: "10.10.100.254:8899:1720747149"
+   *  4. IP only: "10.10.100.254"
+   *
+   * Returns null if no IP can be found.
    */
-  private parseQrValue(raw: string): { ip: string; port: number; name?: string } | null {
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed.ip) {
+  private parseQrValue(
+    raw: string
+  ): { ip: string; port: number; serialNumber?: number; password?: string; name?: string } | null {
+    const trimmed = raw.trim();
+
+    // ── Format 1: JSON ──────────────────────────────────────────────────────
+    if (trimmed.startsWith('{')) {
+      try {
+        const j = JSON.parse(trimmed);
+        if (j.ip) {
+          return {
+            ip:           j.ip,
+            port:         j.port         || 8899,
+            serialNumber: j.sn ?? j.serialNumber ?? j.serial ?? undefined,
+            password:     j.pwd ?? j.password ?? j.pass ?? undefined,
+            name:         j.ap  ?? j.ssid ?? j.name ?? undefined
+          };
+        }
+      } catch { /* not JSON */ }
+    }
+
+    // ── Format 2: key=value pairs (comma or semicolon separated) ───────────
+    // e.g.  SN:1720747149,PWD:12345678,IP:10.10.100.254,PORT:8899
+    if (/SN:|IP:|PWD:/i.test(trimmed)) {
+      const kv: Record<string, string> = {};
+      trimmed.split(/[,;]/).forEach(pair => {
+        const [k, v] = pair.trim().split(':');
+        if (k && v !== undefined) kv[k.trim().toUpperCase()] = v.trim();
+      });
+
+      const ip = kv['IP'];
+      if (ip) {
         return {
-          ip: parsed.ip,
-          port: parsed.port || 8899,
-          name: parsed.name
+          ip,
+          port:         kv['PORT'] ? parseInt(kv['PORT'], 10) : 8899,
+          serialNumber: kv['SN']   ? parseInt(kv['SN'],   10) : undefined,
+          password:     kv['PWD']  || undefined
         };
       }
-    } catch { /* not JSON */ }
+    }
 
-    const ipPortMatch = raw.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):?(\d{4,5})?/);
+    // ── Format 3: ip:port:serial ────────────────────────────────────────────
+    const ipPortMatch = trimmed.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):?(\d{4,5})?:?(\d{6,12})?/);
     if (ipPortMatch) {
       return {
-        ip: ipPortMatch[1],
-        port: ipPortMatch[2] ? parseInt(ipPortMatch[2], 10) : 8899
+        ip:           ipPortMatch[1],
+        port:         ipPortMatch[2] ? parseInt(ipPortMatch[2], 10) : 8899,
+        serialNumber: ipPortMatch[3] ? parseInt(ipPortMatch[3], 10) : undefined
       };
     }
 
@@ -250,10 +307,10 @@ export class Tab3Page implements OnInit {
     } else {
       this.testResult = { 
         ok: false, 
-        message: `No response from device. Check console logs. Tried: ${testedRegs.trim()}`
+        message: `No response. Verify IP, port 8899, and the LSW-5 serial number. Tried: ${testedRegs.trim()}`
       };
-      console.error('[Test] All registers failed. Check device IP, port, and Modbus compatibility.');
-      console.error('[Test] Check console logs above for [Modbus] error details.');
+      console.error('[Test] All registers failed. Check device IP, port, serial number and SolarmanV5 compatibility.');
+      console.error('[Test] Check console logs above for [SolarmanV5] error details.');
     }
   }
 

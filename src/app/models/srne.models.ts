@@ -24,6 +24,12 @@ export interface DeviceConfig {
   ip: string;
   port: number;
   slaveId: number;
+  /** Logger serial number printed on the LSW-5 dongle (also shown in its web UI). Required for the SolarmanV5 protocol. */
+  serialNumber: number;
+  /** Web-UI username for the LSW-5 dongle (default: admin). Used to retrieve the serial number from the dongle's config page. */
+  username?: string;
+  /** Web-UI password for the LSW-5 dongle (default: admin). */
+  password?: string;
 }
 
 export interface AppSettings {

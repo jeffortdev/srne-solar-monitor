@@ -90,13 +90,13 @@
     <ion-item>
       <ion-label>
         <h3>SRNE Solar Monitor</h3>
-        <p>Designed for the <strong>SRNE HESP4860S100-H</strong> hybrid inverter. Connects via Modbus TCP through the external SRNE WiFi RS485 dongle (TCP port 8899).</p>
+        <p>Designed for the <strong>SRNE HESP4860S100-H</strong> hybrid inverter. Uses the <strong>SolarmanV5 protocol</strong> (port 8899) via the <strong>LSW-5 WiFi data logger dongle</strong>.</p>
       </ion-label>
     </ion-item>
     <ion-item>
       <ion-label>
         <h3>Connection Requirement</h3>
-        <p>An external SRNE WiFi RS485 dongle must be connected to the RS485/Modbus port of the HESP4860S100-H. The dongle broadcasts a WiFi hotspot (SSID: <em>AP_XXXXXX</em>) — connect your phone to it before adding a device.</p>
+        <p>The <strong>LSW-5 dongle</strong> must be plugged into the RS485 port of the HESP4860S100-H. The dongle creates a WiFi hotspot — connect your phone to it, then open its web UI at <code>http://192.168.10.100</code> (user: <em>admin</em>, pass: <em>admin</em>) to find the <strong>Logger Serial Number</strong> needed below.</p>
       </ion-label>
     </ion-item>
     <ion-item>
@@ -127,7 +127,7 @@
           </ion-item>
           <ion-item>
             <ion-label position="stacked">IP Address <span aria-hidden="true">*</span></ion-label>
-            <ion-input [(ngModel)]="form.ip" placeholder="192.168.4.1"
+            <ion-input [(ngModel)]="form.ip" placeholder="192.168.10.100"
               inputmode="url" aria-label="IP address" required></ion-input>
           </ion-item>
           <ion-item>
@@ -136,28 +136,43 @@
               aria-label="Port number"></ion-input>
           </ion-item>
           <ion-item>
+            <ion-label position="stacked">Logger Serial Number <span aria-hidden="true">*</span></ion-label>
+            <ion-input [(ngModel)]="form.serialNumber" type="number" placeholder="e.g. 1720747149"
+              aria-label="Logger serial number"></ion-input>
+          </ion-item>
+          <ion-item>
             <ion-label position="stacked">Modbus Slave ID</ion-label>
             <ion-input [(ngModel)]="form.slaveId" type="number" placeholder="1"
               aria-label="Modbus slave ID"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Dongle Web UI Username</ion-label>
+            <ion-input [(ngModel)]="form.username" placeholder="admin"
+              autocomplete="off" aria-label="Dongle web UI username"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Dongle Web UI Password</ion-label>
+            <ion-input [(ngModel)]="form.password" type="password" placeholder="admin"
+              autocomplete="off" aria-label="Dongle web UI password"></ion-input>
           </ion-item>
         </ion-list>
 
         <ion-item lines="none" class="hint-item">
           <ion-icon slot="start" name="information-circle-outline" color="medium" aria-hidden="true"></ion-icon>
           <ion-label class="ion-text-wrap" color="medium">
-            <p>Requires the external SRNE WiFi RS485 dongle connected to the <strong>HESP4860S100-H</strong> RS485 port. Default IP: <code>192.168.4.1</code>, Port: <code>8899</code>, Slave ID: <code>1</code>.</p>
+            <p><strong>Serial Number:</strong> open the LSW-5 web UI at <code>http://&lt;IP&gt;</code> → log in → <em>Device Information</em> to find the serial number. The username and password are stored for your reference only.</p>
           </ion-label>
         </ion-item>
 
         <ion-button expand="block" fill="outline" color="secondary" class="qr-btn"
-          (click)="scanQr()" aria-label="Scan QR code from SRNE external WiFi dongle">
+          (click)="scanQr()" aria-label="Scan QR code from LSW-5 dongle">
           <ion-icon slot="start" name="qr-code-outline" aria-hidden="true"></ion-icon>
-          Scan Dongle QR Code
+          Scan LSW-5 QR Code
         </ion-button>
-        <p class="qr-hint">Scan the QR code on the external SRNE WiFi RS485 dongle to auto-fill IP and port.</p>
+        <p class="qr-hint">Scans the LSW-5 QR code and fills in IP address, serial number, and dongle password automatically. Review the fields then tap Save.</p>
 
         <ion-button expand="block" color="primary" class="save-btn"
-          [disabled]="!form.name || !form.ip"
+          [disabled]="!form.name || !form.ip || !form.serialNumber"
           (click)="saveDevice()" aria-label="Save device">
           Save
         </ion-button>
