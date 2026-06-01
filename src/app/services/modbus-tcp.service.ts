@@ -186,4 +186,99 @@ export class ModbusTcpService {
       return null;
     }
   }
+
+  /**
+   * Runs a step-by-step diagnostic and returns a structured result so the UI
+   * can show a meaningful error instead of a generic "no response" message.
+   *
+   * Stages (in order):
+   *  plugin_unavailable — capacitor-tcp-connect not available (browser / non-native build)
+   *  tcp_failed         — TCP socket timed out or refused (wrong IP, not on dongle WiFi)
+   *  no_data            — TCP connected but dongle returned 0 bytes (wrong port?)
+   *  bad_serial         — Got bytes but SolarmanV5 framing invalid (wrong serial number)
+   *  modbus_error       — SolarmanV5 OK but Modbus returned exception (wrong slave ID?)
+   *  ok                 — Read succeeded
+   */
+  async diagnose(device: DeviceConfig): Promise<{ stage: string; message: string }> {
+    let SocketConnect: any;
+    try {
+      const mod = await import('capacitor-tcp-connect');
+      SocketConnect = (mod as any).SocketConnect;
+      if (typeof SocketConnect?.open !== 'function') throw new Error('open not a function');
+    } catch {
+      return {
+        stage: 'plugin_unavailable',
+        message:
+          'The TCP plugin is not available. The app must be installed as a native ' +
+          'Android/iOS build (APK/IPA) — it cannot connect to the dongle in a web browser.'
+      };
+    }
+
+    const modbusFrame = this.buildModbusRequest(device.slaveId, 0x0100, 1);
+    const v5Packet    = this.buildSolarmanV5Request(device.serialNumber, modbusFrame);
+    const text        = String.fromCharCode(...v5Packet);
+
+    let rawResponse: string | undefined;
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Socket timeout')), 6000)
+      );
+      const result = await Promise.race([
+        SocketConnect.open({ ip: device.ip, port: String(device.port), text }),
+        timeoutPromise
+      ]);
+      rawResponse = result?.value as string | undefined;
+    } catch (e: any) {
+      const isTimeout = /timeout/i.test(e?.message ?? '');
+      return {
+        stage: 'tcp_failed',
+        message: isTimeout
+          ? `TCP timeout after 6 s connecting to ${device.ip}:${device.port}. ` +
+            'Check: (1) phone is on the LSW-5 WiFi hotspot, (2) IP address is correct, (3) port is 8899.'
+          : `TCP error: "${e?.message}". Make sure your phone is connected to the LSW-5 WiFi and the IP address is correct.`
+      };
+    }
+
+    if (!rawResponse || rawResponse.length === 0) {
+      return {
+        stage: 'no_data',
+        message:
+          `TCP connected to ${device.ip}:${device.port} but the dongle returned no data. ` +
+          'Confirm the port is 8899 (the SolarmanV5 data port — not port 80 which is the web UI).'
+      };
+    }
+
+    const hexResp = Array.from(rawResponse)
+      .map(c => c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')).join(' ');
+    console.log('[Diagnose] Raw response (hex):', hexResp);
+
+    let modbusRaw: string;
+    try {
+      modbusRaw = this.extractModbusFromV5Response(rawResponse);
+    } catch {
+      return {
+        stage: 'bad_serial',
+        message:
+          `TCP connected and ${rawResponse.length} bytes received, but the response does not match ` +
+          'SolarmanV5 framing. This almost always means the Logger Serial Number is wrong. ' +
+          `Currently using: ${device.serialNumber}. ` +
+          'Verify it in the dongle web UI → Device Information (it is the 10-digit SN, not the inverter serial).'
+      };
+    }
+
+    try {
+      const values = this.parseModbusResponse(modbusRaw, 1);
+      return {
+        stage: 'ok',
+        message: `Connected! Register 0x0100 (Battery SOC) = ${values[0]} %.`
+      };
+    } catch (e: any) {
+      return {
+        stage: 'modbus_error',
+        message:
+          `SolarmanV5 OK but Modbus returned an error: "${e?.message}". ` +
+          `Check the Slave ID (currently ${device.slaveId}) — most SRNE inverters use Slave ID 1.`
+      };
+    }
+  }
 }

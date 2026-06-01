@@ -26,6 +26,12 @@
         </ion-label>
         <ion-note slot="end" *ngIf="device.id === activeDeviceId" color="primary">Active</ion-note>
       </ion-item>
+      <ion-item-options side="start">
+        <ion-item-option color="warning" (click)="openEditDevice(device)"
+          aria-label="Edit device {{ device.name }}">
+          <ion-icon slot="icon-only" name="create-outline" aria-hidden="true"></ion-icon>
+        </ion-item-option>
+      </ion-item-options>
       <ion-item-options side="end">
         <ion-item-option color="danger" (click)="deleteDevice(device.id)"
           aria-label="Delete device {{ device.name }}">
@@ -146,21 +152,28 @@
               aria-label="Modbus slave ID"></ion-input>
           </ion-item>
           <ion-item>
-            <ion-label position="stacked">Dongle Web UI Username</ion-label>
+            <ion-label position="stacked">
+              Web UI Username
+              <ion-badge color="medium" style="margin-left:6px;font-size:10px;vertical-align:middle">reference only</ion-badge>
+            </ion-label>
             <ion-input [(ngModel)]="form.username" placeholder="admin"
-              autocomplete="off" aria-label="Dongle web UI username"></ion-input>
+              autocomplete="off" aria-label="Dongle web UI username (reference only, not used for connection)"></ion-input>
           </ion-item>
           <ion-item>
-            <ion-label position="stacked">Dongle Web UI Password</ion-label>
+            <ion-label position="stacked">
+              Web UI Password
+              <ion-badge color="medium" style="margin-left:6px;font-size:10px;vertical-align:middle">reference only</ion-badge>
+            </ion-label>
             <ion-input [(ngModel)]="form.password" type="password" placeholder="admin"
-              autocomplete="off" aria-label="Dongle web UI password"></ion-input>
+              autocomplete="off" aria-label="Dongle web UI password (reference only, not used for connection)"></ion-input>
           </ion-item>
         </ion-list>
 
         <ion-item lines="none" class="hint-item">
           <ion-icon slot="start" name="information-circle-outline" color="medium" aria-hidden="true"></ion-icon>
           <ion-label class="ion-text-wrap" color="medium">
-            <p><strong>Serial Number:</strong> open the LSW-5 web UI at <code>http://&lt;IP&gt;</code> → log in → <em>Device Information</em> to find the serial number. The username and password are stored for your reference only.</p>
+            <p><strong>How the connection works:</strong> the app connects directly on port 8899 using the <em>SolarmanV5 protocol</em>. Only the <strong>IP, Port, and Serial Number</strong> are sent — username and password are <strong>never used</strong> for the data connection.</p>
+            <p style="margin-top:6px"><strong>Finding your Serial Number:</strong> open <code>http://&lt;IP&gt;</code> in a browser → log in (default admin / admin) → <em>Device Information</em>. It's the 10-digit number labelled <em>SN</em> or <em>Logger SN</em>.</p>
           </ion-label>
         </ion-item>
 

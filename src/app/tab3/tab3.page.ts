@@ -79,6 +79,20 @@ export class Tab3Page implements OnInit {
     this.showAddModal = true;
   }
 
+  openEditDevice(device: DeviceConfig): void {
+    this.editingDevice = device;
+    this.form = {
+      name: device.name,
+      ip: device.ip,
+      port: device.port,
+      slaveId: device.slaveId,
+      serialNumber: device.serialNumber,
+      username: device.username || 'admin',
+      password: device.password || 'admin'
+    };
+    this.showAddModal = true;
+  }
+
   closeAddDevice(): void {
     this.showAddModal = false;
   }
@@ -279,39 +293,11 @@ export class Tab3Page implements OnInit {
 
     this.testingConnection = true;
     this.testResult = null;
-    const start = Date.now();
 
-    console.log(`[Test] Starting connection test to ${device.ip}:${device.port}`);
+    const { stage, message } = await this.modbus.diagnose(device);
 
-    // Try multiple registers to find one that works
-    // 0x0100 = Battery SOC, 0x0101 = Battery Voltage, 0x010F = PV Power, 0x3200 = Daily Generation
-    const registersToTry = [0x0100, 0x0101, 0x010F, 0x3200, 0x0000, 0x0001];
-    let result = null;
-    let testedRegs = '';
-
-    for (const reg of registersToTry) {
-      console.log(`[Test] Trying register 0x${reg.toString(16).toUpperCase().padStart(4, '0')}`);
-      result = await this.modbus.readHoldingRegisters(device, reg, 1);
-      testedRegs += `0x${reg.toString(16).toUpperCase().padStart(4, '0')} `;
-      if (result !== null) {
-        console.log(`[Test] ✓ Register 0x${reg.toString(16).toUpperCase().padStart(4, '0')} responded with:`, result);
-        break;
-      }
-    }
-
-    const elapsed = Date.now() - start;
     this.testingConnection = false;
-
-    if (result !== null) {
-      this.testResult = { ok: true, message: `Connected in ${elapsed}ms (value: ${result[0]})` };
-    } else {
-      this.testResult = { 
-        ok: false, 
-        message: `No response. Verify IP, port 8899, and the LSW-5 serial number. Tried: ${testedRegs.trim()}`
-      };
-      console.error('[Test] All registers failed. Check device IP, port, serial number and SolarmanV5 compatibility.');
-      console.error('[Test] Check console logs above for [SolarmanV5] error details.');
-    }
+    this.testResult = { ok: stage === 'ok', message };
   }
 
   // ── Display prefs ─────────────────────────────────────────

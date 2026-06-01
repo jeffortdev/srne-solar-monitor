@@ -4,9 +4,9 @@
       <span class="app-title">&#9728;&#65039; SRNE Solar Monitor</span>
     </ion-title>
     <ion-buttons slot="end">
-      <ion-badge [color]="connected ? 'success' : 'medium'" class="status-badge"
-        [attr.aria-label]="connected ? 'Connected live' : 'Demo mode'">
-        {{ connected ? 'Live' : 'Demo' }}
+      <ion-badge [color]="statusBadgeColor" class="status-badge"
+        [attr.aria-label]="statusBadgeLabel">
+        {{ statusBadgeLabel }}
       </ion-badge>
     </ion-buttons>
   </ion-toolbar>

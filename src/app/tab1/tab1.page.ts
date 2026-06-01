@@ -1,8 +1,9 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { SrneData, CHARGING_STATE_LABELS } from '../models/srne.models';
-import { SrneDataService } from '../services/srne-data.service';
+import { ConnectionStatus, SrneDataService } from '../services/srne-data.service';
 import { SettingsService } from '../services/settings.service';
+import { ToastController } from '@ionic/angular';
 
 @Component({
   selector: 'app-tab1',
@@ -14,20 +15,30 @@ export class Tab1Page implements OnInit, OnDestroy {
 
   data: SrneData | null = null;
   connected = false;
+  status: ConnectionStatus = 'demo';
   showGrid = false;
 
   private subs: Subscription[] = [];
+  private lastStatus: ConnectionStatus = 'demo';
 
   constructor(
     private srne: SrneDataService,
-    private settings: SettingsService
+    private settings: SettingsService,
+    private toastCtrl: ToastController
   ) {}
 
   ngOnInit(): void {
     this.showGrid = this.settings.settings.showGrid;
     this.subs.push(
       this.srne.data$.subscribe(d => this.data = d),
-      this.srne.connected$.subscribe(c => this.connected = c)
+      this.srne.connected$.subscribe(c => this.connected = c),
+      this.srne.status$.subscribe(s => {
+        this.status = s;
+        if (s !== this.lastStatus) {
+          this.onStatusChange(s);
+          this.lastStatus = s;
+        }
+      })
     );
   }
 
@@ -37,6 +48,25 @@ export class Tab1Page implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
+  }
+
+  private async onStatusChange(s: ConnectionStatus): Promise<void> {
+    // Only show toasts for meaningful transitions, not the initial 'demo' state
+    if (s === 'live') {
+      const t = await this.toastCtrl.create({ message: '✓ Connected — live data active', duration: 2500, color: 'success', position: 'bottom' });
+      await t.present();
+    } else if (s === 'error') {
+      const t = await this.toastCtrl.create({ message: 'Connection failed — showing demo data. Check Settings → Test Connection for details.', duration: 4000, color: 'warning', position: 'bottom' });
+      await t.present();
+    }
+  }
+
+  get statusBadgeColor(): string {
+    return { demo: 'medium', connecting: 'warning', live: 'success', error: 'danger' }[this.status];
+  }
+
+  get statusBadgeLabel(): string {
+    return { demo: 'Demo', connecting: 'Connecting…', live: 'Live', error: 'Error' }[this.status];
   }
 
   get deviceName(): string {

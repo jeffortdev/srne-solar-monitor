@@ -22,16 +22,20 @@ const REG_DAILY_GEN       = 0x3200;
 
 const MOCK_INTERVAL_SEC = 2;
 
+export type ConnectionStatus = 'demo' | 'connecting' | 'live' | 'error';
+
 @Injectable({ providedIn: 'root' })
 export class SrneDataService implements OnDestroy {
 
   private _data$ = new BehaviorSubject<SrneData | null>(null);
   private _connected$ = new BehaviorSubject<boolean>(false);
   private _useMock$ = new BehaviorSubject<boolean>(true);
+  private _status$ = new BehaviorSubject<ConnectionStatus>('demo');
 
   readonly data$ = this._data$.asObservable();
   readonly connected$ = this._connected$.asObservable();
   readonly useMock$ = this._useMock$.asObservable();
+  readonly status$ = this._status$.asObservable();
 
   private pollSub?: Subscription;
   private lastSnapshotMin = -1;
@@ -45,6 +49,9 @@ export class SrneDataService implements OnDestroy {
 
   startPolling(): void {
     this.stopPolling();
+    if (this.settings.activeDevice) {
+      this._status$.next('connecting');
+    }
     const sec = this.settings.settings.pollIntervalSec || 5;
     this.pollSub = interval(sec * 1000).subscribe(() => this.poll());
     this.poll(); // immediate first poll
@@ -82,12 +89,14 @@ export class SrneDataService implements OnDestroy {
     if (!regs1 || !regs2) {
       this._connected$.next(false);
       this._useMock$.next(true);
+      this._status$.next('error');
       this.emitMock();
       return;
     }
 
     this._connected$.next(true);
     this._useMock$.next(false);
+    this._status$.next('live');
 
     const toSigned16 = (v: number) => v > 0x7FFF ? v - 0x10000 : v;
 
