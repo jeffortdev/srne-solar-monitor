@@ -154,6 +154,10 @@ export class ModbusTcpService {
     startReg: number,
     count: number
   ): Promise<number[] | null> {
+    if (!device.serialNumber) {
+      console.warn('[SolarmanV5] Skipped: Logger Serial Number is 0 — configure it in Settings.');
+      return null;
+    }
     try {
       const { SocketConnect } = await import('capacitor-tcp-connect');
 
@@ -192,14 +196,28 @@ export class ModbusTcpService {
    * can show a meaningful error instead of a generic "no response" message.
    *
    * Stages (in order):
+   *  no_serial          — serialNumber is 0 (never configured); dongle will silently drop all packets
    *  plugin_unavailable — capacitor-tcp-connect not available (browser / non-native build)
    *  tcp_failed         — TCP socket timed out or refused (wrong IP, not on dongle WiFi)
-   *  no_data            — TCP connected but dongle returned 0 bytes (wrong port?)
+   *  no_data            — TCP connected but dongle returned 0 bytes (wrong serial or wrong port)
    *  bad_serial         — Got bytes but SolarmanV5 framing invalid (wrong serial number)
    *  modbus_error       — SolarmanV5 OK but Modbus returned exception (wrong slave ID?)
    *  ok                 — Read succeeded
    */
   async diagnose(device: DeviceConfig): Promise<{ stage: string; message: string }> {
+    // Guard: serial number 0 means the user never configured it — the dongle will
+    // silently drop every SolarmanV5 packet and we'll always get no_data.
+    if (!device.serialNumber) {
+      return {
+        stage: 'no_serial',
+        message:
+          'Logger Serial Number is not set (currently 0). ' +
+          'Open Settings → Edit Device and enter the 10-digit SN printed on the LSW-5 dongle ' +
+          '(also visible in its web UI at http://<IP> → Device Information → Logger SN). ' +
+          'Without the correct serial number the dongle will ignore every request.'
+      };
+    }
+
     let SocketConnect: any;
     try {
       const mod = await import('capacitor-tcp-connect');
@@ -244,7 +262,10 @@ export class ModbusTcpService {
         stage: 'no_data',
         message:
           `TCP connected to ${device.ip}:${device.port} but the dongle returned no data. ` +
-          'Confirm the port is 8899 (the SolarmanV5 data port — not port 80 which is the web UI).'
+          'Most likely cause: the Logger Serial Number is wrong — the dongle silently drops ' +
+          `SolarmanV5 packets whose serial does not match (currently using ${device.serialNumber}). ` +
+          'Verify it in the LSW-5 web UI (http://<IP> → Device Information → Logger SN). ' +
+          'Also confirm the port is 8899 — port 80 is the web UI and will never return Modbus data.'
       };
     }
 
