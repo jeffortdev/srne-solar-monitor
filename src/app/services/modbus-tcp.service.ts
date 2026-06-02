@@ -368,10 +368,24 @@ export class ModbusTcpService {
     ];
 
     if (acBlock) {
-      const acV = (acBlock[0] / 100).toFixed(1);
-      const acA = (acBlock[1] / 100).toFixed(2);
-      const acW = acBlock[3] ?? acBlock[2];
-      lines.push(`AC Out  : ${acV} V  |  ${acA} A  |  ${acW} W`);
+      // 0x0200 block register layout (SRNE HESP/ML hybrid inverter):
+      //   [0] 0x0200  Grid voltage       ×0.1 V
+      //   [1] 0x0201  Grid frequency     ×0.01 Hz
+      //   [2] 0x0202  AC output voltage  ×0.1 V
+      //   [3] 0x0203  AC output freq     ×0.01 Hz
+      //   [4] 0x0204  Apparent power     VA
+      //   [5] 0x0205  Active power       W  ← UPS + Home load (this is what shows 0 if wrong block)
+      //   [6] 0x0206  Load percentage    %
+      const gridV   = (acBlock[0] / 10).toFixed(1);
+      const gridHz  = (acBlock[1] / 100).toFixed(2);
+      const acOutV  = (acBlock[2] / 10).toFixed(1);
+      const acOutHz = (acBlock[3] / 100).toFixed(2);
+      const acVA    = acBlock[4];
+      const acW     = acBlock[5]; // 0x0205 = UPS output + Home load combined
+      const loadPct = acBlock[6];
+      lines.push(`Grid    : ${gridV} V  |  ${gridHz} Hz`);
+      lines.push(`AC Out  : ${acOutV} V  |  ${acOutHz} Hz  |  ${acVA} VA  |  ${acW} W (Load)  |  ${loadPct}%`);
+      lines.push(`Note    : 0x0205=${acW}W is UPS+home load. DC load port 0x010C=${dcLoadW}W (unused on HESP hybrid).`);
       lines.push(`AC regs (0x0200+): ${acBlock.map((v, i) => `0x${(0x0200+i).toString(16).toUpperCase()}=${v}`).join('  ')}`);
     } else {
       lines.push(`AC Out  : (0x0200 block not supported or returned no data)`);

@@ -96,8 +96,10 @@ export class SrneDataService implements OnDestroy {
       return;
     }
 
-    // Two sequential batches — LSW-5 dongle only handles one TCP connection at a time.
-    // 0x0100-0x0116 (23 regs), then 0x3200-0x3203 (4 regs)
+    // Three sequential reads — LSW-5 dongle only handles one TCP connection at a time.
+    // ① 0x0100-0x0116 (23 regs) — battery, solar, DC load
+    // ② 0x0200-0x0206  (7 regs) — AC output: grid, inverter voltage/freq, UPS+home load power
+    // ③ 0x3200-0x3203  (4 regs) — daily energy totals (optional, not on all firmware)
     const regs1 = await this.modbus.readHoldingRegisters(device, REG_BATTERY_SOC, 23);
     if (!regs1) {
       this._lastError$.next(
@@ -114,6 +116,14 @@ export class SrneDataService implements OnDestroy {
     }
 
     // Short pause to let the dongle close its previous TCP session cleanly
+    await new Promise(r => setTimeout(r, 400));
+
+    // AC output block (0x0200-0x0206) — HESP4860S100-H is a hybrid inverter; the AC loads
+    // (UPS port + home load port) are reported here, NOT at the DC load port (0x010C).
+    // 0x0205 = AC output active power (W) = total consumption from both AC output ports.
+    const acRegs = await this.modbus.readHoldingRegisters(device, 0x0200, 7);
+
+    // Short pause before the optional daily stats read
     await new Promise(r => setTimeout(r, 400));
 
     // Daily stats (0x3200) are optional — not all firmware versions support this block.
@@ -136,7 +146,9 @@ export class SrneDataService implements OnDestroy {
       batteryTemp:       regs1[0x0108 - REG_BATTERY_SOC] / 100,
       loadVoltage:       regs1[0x010A - REG_BATTERY_SOC] / 100,
       loadCurrent:       regs1[0x010B - REG_BATTERY_SOC] / 100,
-      loadPower:         regs1[0x010C - REG_BATTERY_SOC],
+      // Prefer AC output active power (0x0205) for hybrid inverters; DC load port (0x010C)
+      // is always 0 on the HESP4860S100-H since loads are on the AC output side.
+      loadPower:         acRegs ? acRegs[0x0205 - 0x0200] : regs1[0x010C - REG_BATTERY_SOC],
       solarPanelVoltage: regs1[0x010D - REG_BATTERY_SOC] / 100,
       solarPanelCurrent: regs1[0x010E - REG_BATTERY_SOC] / 100,
       solarPanelPower:   regs1[0x010F - REG_BATTERY_SOC],
