@@ -1,0 +1,95 @@
+diff --git a/node_modules/capacitor-tcp-connect/android/build.gradle b/node_modules/capacitor-tcp-connect/android/build.gradle
+index 0000001..0000002 100644
+--- a/node_modules/capacitor-tcp-connect/android/build.gradle
++++ b/node_modules/capacitor-tcp-connect/android/build.gradle
+@@ -18,6 +18,7 @@ apply plugin: 'com.android.library'
+ 
+ android {
++    namespace 'com.mycompany.plugins.example'
+     compileSdkVersion project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 33
+     defaultConfig {
+         minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 22
+diff --git a/node_modules/capacitor-tcp-connect/android/src/main/java/com/mycompany/plugins/example/SocketConnectPlugin.java b/node_modules/capacitor-tcp-connect/android/src/main/java/com/mycompany/plugins/example/SocketConnectPlugin.java
+index 0000001..0000002 100644
+--- a/node_modules/capacitor-tcp-connect/android/src/main/java/com/mycompany/plugins/example/SocketConnectPlugin.java
++++ b/node_modules/capacitor-tcp-connect/android/src/main/java/com/mycompany/plugins/example/SocketConnectPlugin.java
+@@ -1,35 +1,64 @@
+ package com.mycompany.plugins.example;
+ 
+ import com.getcapacitor.JSObject;
+ import com.getcapacitor.Plugin;
+ import com.getcapacitor.PluginCall;
+ import com.getcapacitor.annotation.CapacitorPlugin;
+ import com.getcapacitor.PluginMethod;
+ 
+-import java.io.OutputStream;
+-import java.net.Socket;
++import java.io.ByteArrayOutputStream;
++import java.io.InputStream;
++import java.io.OutputStream;
++import java.net.Socket;
++import java.nio.charset.Charset;
+ 
+ @CapacitorPlugin(name = "SocketConnect")
+ public class SocketConnectPlugin extends Plugin {
+ 
++    // Latin-1 (ISO-8859-1) maps Unicode U+0000-U+00FF directly to bytes 0x00-0xFF.
++    // This is essential for binary Modbus/SolarmanV5 frames which contain bytes > 0x7F.
++    private static final Charset LATIN1 = Charset.forName("ISO-8859-1");
++
+     @PluginMethod()
+     public void open(PluginCall call) {
+         String ip = call.getString("ip");
+         String port = call.getString("port");
+         String text = call.getString("text");
+ 
+         try {
+             Socket socket = new Socket(ip, Integer.parseInt(port));
+-            OutputStream outputStream = socket.getOutputStream();
+-            outputStream.write(text.getBytes());
+-            outputStream.close();
+-            socket.close();
+ 
+-            JSObject ret = new JSObject();
+-            ret.put("success", true);
+-            call.resolve(ret);
++            // Write request - use Latin-1 so every byte value 0x00-0xFF is preserved exactly.
++            OutputStream out = socket.getOutputStream();
++            out.write(text.getBytes(LATIN1));
++            out.flush();
++
++            // Read response: wait up to 3 s for the first byte, then 500 ms for subsequent chunks.
++            socket.setSoTimeout(3000);
++            InputStream in = socket.getInputStream();
++            ByteArrayOutputStream responseBytes = new ByteArrayOutputStream();
++            byte[] buffer = new byte[4096];
++
++            try {
++                int n = in.read(buffer);
++                if (n > 0) {
++                    responseBytes.write(buffer, 0, n);
++                    socket.setSoTimeout(500); // shorter timeout once data has started arriving
++                    try {
++                        while ((n = in.read(buffer)) > 0) {
++                            responseBytes.write(buffer, 0, n);
++                        }
++                    } catch (java.net.SocketTimeoutException ignored) {
++                        // No more data within 500 ms - treat as end of response.
++                    }
++                }
++            } catch (java.net.SocketTimeoutException ignored) {
++                // No data arrived within 3 s - responseBytes stays empty.
++            }
++
++            socket.close();
++
++            JSObject ret = new JSObject();
++            // Return response bytes as a Latin-1 string so the JS layer can read char codes
++            // back as raw byte values via charCodeAt().
++            ret.put("value", responseBytes.toString("ISO-8859-1"));
++            call.resolve(ret);
+         } catch (Exception e) {
+             call.reject(e.getMessage(), e);
+         }
+     }
+ }

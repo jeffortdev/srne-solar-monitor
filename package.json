@@ -5,6 +5,7 @@
   "homepage": "https://ionicframework.com/",
   "scripts": {
     "ng": "ng",
+    "postinstall": "patch-package",
     "start": "npx ionic serve",
     "build": "npx ionic build",
     "build:prod": "npx ionic build --prod",
@@ -75,6 +76,7 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "patch-package": "^8.0.1",
     "typescript": "~5.9.0"
   },
   "description": "An Ionic project"
