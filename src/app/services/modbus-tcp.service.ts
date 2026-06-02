@@ -321,8 +321,8 @@ export class ModbusTcpService {
 
     const toSigned16 = (v: number) => v > 0x7FFF ? v - 0x10000 : v;
     const soc      = values[0x0100 - 0x0100];
-    const battV    = (values[0x0101 - 0x0100] / 100).toFixed(2);
-    const battA    = (toSigned16(values[0x0102 - 0x0100]) / 100).toFixed(2);
+    const battV    = (values[0x0101 - 0x0100] / 10).toFixed(1);   // scale 0.1
+    const battA    = (toSigned16(values[0x0102 - 0x0100]) / 10).toFixed(1);  // scale 0.1, + charging, - discharging
     const battT    = (toSigned16(values[0x0103 - 0x0100]) / 10).toFixed(1);
     const pv1V     = (values[0x0107 - 0x0100] / 10).toFixed(1);
     const pv1A     = (values[0x0108 - 0x0100] / 10).toFixed(1);
