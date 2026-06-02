@@ -1,7 +1,7 @@
 export interface SrneData {
   batterySoc: number;        // 0-100 %
-  batteryVoltage: number;    // V (×100 raw)
-  batteryCurrent: number;    // A (×100 raw, + charging, - discharging)
+  batteryVoltage: number;    // V
+  batteryCurrent: number;    // A (negative = discharging)
   batteryTemp: number;       // °C
   solarPanelVoltage: number; // V
   solarPanelCurrent: number; // A
@@ -9,6 +9,7 @@ export interface SrneData {
   loadVoltage: number;       // V
   loadCurrent: number;       // A
   loadPower: number;         // W
+  gridPower: number;         // W (positive = importing from grid, 0 = no grid)
   chargingState: number;     // 0=idle,1=MPPT,2=absorb,3=float,4=equalize
   loadStatus: number;        // 0=off,1=on
   dailyGenerated: number;    // kWh

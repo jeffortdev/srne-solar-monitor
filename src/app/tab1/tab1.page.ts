@@ -115,9 +115,9 @@ export class Tab1Page implements OnInit, OnDestroy {
     return (this.data?.loadPower ?? 0) > 0;
   }
 
-  /** Grid power in watts derived from energy balance: positive = importing from grid. */
+  /** Grid power in watts read from registers 0x0213×0x0214 (V×I). 0 when no grid import. */
   get gridPowerW(): number {
-    return (this.data?.loadPower ?? 0) - (this.data?.solarPanelPower ?? 0) + this.batteryPowerW;
+    return this.data?.gridPower ?? 0;
   }
 
   get isGridActive(): boolean {

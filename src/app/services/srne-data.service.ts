@@ -117,14 +117,16 @@ export class SrneDataService implements OnDestroy {
     // Short pause to let the dongle close its previous TCP session cleanly
     await new Promise(r => setTimeout(r, 400));
 
-    // Load L1 power block (0x021B-0x021C) — inverter AC output load
-    //   0x021B = Load L1 Active Power (W)
-    //   0x021C = Load L1 Apparent Power (VA)
-    const loadRegs = await this.modbus.readHoldingRegisters(device, 0x021B, 2);
-    if (loadRegs) {
-      console.log(`[Poll] Load regs: 0x021B=${loadRegs[0]}W (active)  0x021C=${loadRegs[1]}VA (apparent)`);
+    // Inverter block 0x0213-0x021C (10 regs):
+    //   0x0213 = Grid L1 Voltage (÷10 → V)
+    //   0x0214 = Grid L1 Current (÷10 → A)
+    //   0x021B = Load L1 Active Power (W)  [offset 8]
+    //   0x021C = Load L1 Apparent Power (VA) [offset 9]
+    const invRegs = await this.modbus.readHoldingRegisters(device, 0x0213, 10);
+    if (invRegs) {
+      console.log(`[Poll] Grid: 0x0213=${invRegs[0]}(V×10)  0x0214=${invRegs[1]}(A×10)  Load 0x021B=${invRegs[8]}W`);
     } else {
-      console.warn('[Poll] Load block (0x021B) read returned null — load will show 0');
+      console.warn('[Poll] Inverter block (0x0213) read returned null');
     }
 
     // Short pause before the optional daily stats read
@@ -158,7 +160,15 @@ export class SrneDataService implements OnDestroy {
       loadVoltage:       0,
       loadCurrent:       0,
       // 0x021B = Load L1 Active Power (W) per SRNE MODBUS Protocol v1.96
-      loadPower:         loadRegs ? loadRegs[0] : 0,
+      loadPower:         invRegs ? invRegs[8] : 0,
+      // Grid power from 0x0213 (V) × 0x0214 (I), both scale 0.1; positive = importing
+      gridPower:         (() => {
+        if (!invRegs) return 0;
+        const gV = invRegs[0] / 10;
+        const gA = invRegs[1] / 10;
+        const w = Math.round(gV * gA);
+        return w > 5 ? w : 0; // suppress noise/rounding below 5W
+      })(),
       solarPanelVoltage: pvVoltage,
       solarPanelCurrent: pvCurrent,
       solarPanelPower:   solarPanelPower,
@@ -199,7 +209,7 @@ export class SrneDataService implements OnDestroy {
       loadVoltage:       batteryV,
       loadCurrent:       parseFloat((loadPower / batteryV).toFixed(2)),
       loadPower,
-      chargingState:     solarPower > 10 ? 1 : 0,
+      gridPower:         0,  // no grid in mock/demo mode
       loadStatus:        1,
       dailyGenerated:    parseFloat((solarFactor * 1.8 + 0.2).toFixed(2)),
       dailyConsumed:     parseFloat((0.5 + this.mockPhase * 0.002).toFixed(2)),
