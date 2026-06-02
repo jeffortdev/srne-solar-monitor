@@ -152,7 +152,8 @@ export class SrneDataService implements OnDestroy {
     const data: SrneData = {
       batterySoc:        regs1[REG_BATTERY_SOC - REG_BATTERY_SOC],
       batteryVoltage:    regs1[REG_BATTERY_VOLTAGE - REG_BATTERY_SOC] / 10,   // scale 0.1 per SRNE spec
-      batteryCurrent:    toSigned16(regs1[REG_BATTERY_CURRENT - REG_BATTERY_SOC]) / 10, // scale 0.1, + charging, - discharging
+      // SRNE sends positive current when discharging; negate so app convention is negative = discharging
+      batteryCurrent:    -toSigned16(regs1[REG_BATTERY_CURRENT - REG_BATTERY_SOC]) / 10,
       batteryTemp:       toSigned16(regs1[0x0103 - REG_BATTERY_SOC]) / 10,
       loadVoltage:       0,
       loadCurrent:       0,
