@@ -80,13 +80,19 @@ export class SrneDataService implements OnDestroy {
       return;
     }
 
-    // Attempt two batches: 0x0100-0x0116 (23 regs), then 0x3200-0x3203 (4 regs)
-    const [regs1, regs2] = await Promise.all([
-      this.modbus.readHoldingRegisters(device, REG_BATTERY_SOC, 23),
-      this.modbus.readHoldingRegisters(device, REG_DAILY_GEN, 4)
-    ]);
+    // Two sequential batches — LSW-5 dongle only handles one TCP connection at a time.
+    // 0x0100-0x0116 (23 regs), then 0x3200-0x3203 (4 regs)
+    const regs1 = await this.modbus.readHoldingRegisters(device, REG_BATTERY_SOC, 23);
+    if (!regs1) {
+      this._connected$.next(false);
+      this._useMock$.next(true);
+      this._status$.next('error');
+      this.emitMock();
+      return;
+    }
 
-    if (!regs1 || !regs2) {
+    const regs2 = await this.modbus.readHoldingRegisters(device, REG_DAILY_GEN, 4);
+    if (!regs2) {
       this._connected$.next(false);
       this._useMock$.next(true);
       this._status$.next('error');
