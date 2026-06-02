@@ -324,9 +324,12 @@ export class ModbusTcpService {
     const battV    = (values[0x0101 - 0x0100] / 100).toFixed(2);
     const battA    = (toSigned16(values[0x0102 - 0x0100]) / 100).toFixed(2);
     const battT    = (values[0x0108 - 0x0100] / 100).toFixed(1);
-    const pvV      = (values[0x010D - 0x0100] / 100).toFixed(2);
-    const pvA      = (values[0x010E - 0x0100] / 100).toFixed(2);
-    const pvW      = values[0x010F - 0x0100];
+    const pvVnum   = values[0x010D - 0x0100] / 100;
+    const pvAnum   = values[0x010E - 0x0100] / 100;
+    const pvV      = pvVnum.toFixed(2);
+    const pvA      = pvAnum.toFixed(2);
+    const pvW      = values[0x010F - 0x0100];              // raw register (may be wrong on HESP)
+    const pvWvi    = Math.round(pvVnum * pvAnum);           // physically derived V×I
     // DC load port (0x010A-0x010C) — may be 0 on hybrid inverters where load is on the AC output side
     const dcLoadV  = (values[0x010A - 0x0100] / 100).toFixed(2);
     const dcLoadA  = (values[0x010B - 0x0100] / 100).toFixed(2);
@@ -362,31 +365,26 @@ export class ModbusTcpService {
     const lines = [
       `Connected to ${device.ip}:${device.port}`,
       `Battery : ${soc}%  |  ${battV} V  |  ${battA} A  |  ${battT} °C`,
-      `Solar   : ${pvV} V  |  ${pvA} A  |  ${pvW} W`,
+      `Solar   : ${pvV} V  |  ${pvA} A  |  V×I=${pvWvi} W  |  reg0x010F=${pvW} W  (app uses V×I)`,
       `DC Load : ${dcLoadV} V  |  ${dcLoadA} A  |  ${dcLoadW} W  (${dcLoadOn})`,
       `Charging: ${chgLabel}`,
     ];
 
     if (acBlock) {
-      // 0x0200 block register layout (SRNE HESP/ML hybrid inverter):
-      //   [0] 0x0200  Grid voltage       ×0.1 V
-      //   [1] 0x0201  Grid frequency     ×0.01 Hz
-      //   [2] 0x0202  AC output voltage  ×0.1 V
-      //   [3] 0x0203  AC output freq     ×0.01 Hz
-      //   [4] 0x0204  Apparent power     VA
-      //   [5] 0x0205  Active power       W  ← UPS + Home load (this is what shows 0 if wrong block)
-      //   [6] 0x0206  Load percentage    %
-      const gridV   = (acBlock[0] / 10).toFixed(1);
-      const gridHz  = (acBlock[1] / 100).toFixed(2);
-      const acOutV  = (acBlock[2] / 10).toFixed(1);
-      const acOutHz = (acBlock[3] / 100).toFixed(2);
-      const acVA    = acBlock[4];
-      const acW     = acBlock[5]; // 0x0205 = UPS output + Home load combined
-      const loadPct = acBlock[6];
-      lines.push(`Grid    : ${gridV} V  |  ${gridHz} Hz`);
-      lines.push(`AC Out  : ${acOutV} V  |  ${acOutHz} Hz  |  ${acVA} VA  |  ${acW} W (Load)  |  ${loadPct}%`);
-      lines.push(`Note    : 0x0205=${acW}W is UPS+home load. DC load port 0x010C=${dcLoadW}W (unused on HESP hybrid).`);
-      lines.push(`AC regs (0x0200+): ${acBlock.map((v, i) => `0x${(0x0200+i).toString(16).toUpperCase()}=${v}`).join('  ')}`);
+      // Dump all 16 registers; flag those in a plausible AC-load-watts range (50..10000)
+      const acDump = acBlock.map((v, i) => {
+        const label = `0x${(0x0200+i).toString(16).toUpperCase()}=${v}`;
+        return (v >= 50 && v <= 10000) ? `**${label}**` : label; // ** = plausible watts
+      }).join('  ');
+      lines.push(`AC block (0x0200-0x020F) — ** = plausible load-watt candidates:`);
+      lines.push(acDump);
+      // Try the same candidates as doPoll so the diagnose confirms what the poll will use
+      const candIdxs = [13, 5, 2, 11]; // 0x020D, 0x0205, 0x0202, 0x020B
+      let chosen = 0, chosenReg = '?';
+      for (const idx of candIdxs) {
+        if (acBlock[idx] > 0) { chosen = acBlock[idx]; chosenReg = `0x${(0x0200+idx).toString(16).toUpperCase()}`; break; }
+      }
+      lines.push(`Load    : ${chosen} W  (from ${chosenReg}  — DC port 0x010C=${dcLoadW}W unused on hybrid)`);
     } else {
       lines.push(`AC Out  : (0x0200 block not supported or returned no data)`);
     }

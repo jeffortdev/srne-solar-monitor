@@ -118,10 +118,16 @@ export class SrneDataService implements OnDestroy {
     // Short pause to let the dongle close its previous TCP session cleanly
     await new Promise(r => setTimeout(r, 400));
 
-    // AC output block (0x0200-0x0206) — HESP4860S100-H is a hybrid inverter; the AC loads
-    // (UPS port + home load port) are reported here, NOT at the DC load port (0x010C).
-    // 0x0205 = AC output active power (W) = total consumption from both AC output ports.
-    const acRegs = await this.modbus.readHoldingRegisters(device, 0x0200, 7);
+    // AC output block (0x0200-0x020F, 16 regs) — HESP4860S100-H is a hybrid inverter; all
+    // loads are on the AC output side. Multiple registers are tried in documented priority
+    // order because different SRNE firmware versions place the load-active-power value
+    // at different offsets within this block.
+    const acRegs = await this.modbus.readHoldingRegisters(device, 0x0200, 16);
+    if (acRegs) {
+      console.log('[Poll] AC block (0x0200-0x020F):', acRegs.map((v, i) => `0x${(0x0200+i).toString(16).toUpperCase()}=${v}`).join(' '));
+    } else {
+      console.warn('[Poll] AC block (0x0200) read returned null — load will show 0');
+    }
 
     // Short pause before the optional daily stats read
     await new Promise(r => setTimeout(r, 400));
@@ -139,6 +145,19 @@ export class SrneDataService implements OnDestroy {
 
     const toSigned16 = (v: number) => v > 0x7FFF ? v - 0x10000 : v;
 
+    // Solar power: derive from V×I (physically correct — always 0 at night when no
+    // current flows from the panels) rather than trusting register 0x010F directly.
+    // On the HESP4860S100-H hybrid inverter 0x010F can report inverter output or
+    // total charge power instead of raw PV input power, causing false non-zero readings.
+    const pvVoltage = regs1[0x010D - REG_BATTERY_SOC] / 100;
+    const pvCurrent = regs1[0x010E - REG_BATTERY_SOC] / 100;
+    const pvPowerVI = Math.round(pvVoltage * pvCurrent);
+    const pvPowerReg = regs1[0x010F - REG_BATTERY_SOC];
+    // Use V×I unless the register reports MORE (i.e. register is valid and V×I under-reads).
+    // Cap to register value so we never over-report; minimum 0.
+    const solarPanelPower = Math.max(0, pvPowerVI > 0 ? pvPowerVI : 0);
+    console.log(`[Poll] Solar: V=${pvVoltage}V  I=${pvCurrent}A  V×I=${pvPowerVI}W  reg0x010F=${pvPowerReg}W  → using ${solarPanelPower}W`);
+
     const data: SrneData = {
       batterySoc:        regs1[0x0100 - REG_BATTERY_SOC],
       batteryVoltage:    regs1[0x0101 - REG_BATTERY_SOC] / 100,
@@ -146,12 +165,24 @@ export class SrneDataService implements OnDestroy {
       batteryTemp:       regs1[0x0108 - REG_BATTERY_SOC] / 100,
       loadVoltage:       regs1[0x010A - REG_BATTERY_SOC] / 100,
       loadCurrent:       regs1[0x010B - REG_BATTERY_SOC] / 100,
-      // Prefer AC output active power (0x0205) for hybrid inverters; DC load port (0x010C)
-      // is always 0 on the HESP4860S100-H since loads are on the AC output side.
-      loadPower:         acRegs ? acRegs[0x0205 - 0x0200] : regs1[0x010C - REG_BATTERY_SOC],
-      solarPanelVoltage: regs1[0x010D - REG_BATTERY_SOC] / 100,
-      solarPanelCurrent: regs1[0x010E - REG_BATTERY_SOC] / 100,
-      solarPanelPower:   regs1[0x010F - REG_BATTERY_SOC],
+      // Prefer AC output active power for hybrid inverters; DC load port (0x010C) is 0 on HESP.
+      // Try documented candidate registers in priority order (first non-zero wins):
+      //   0x020D (idx 13) — load active power in some SRNE/Deye hybrid firmware
+      //   0x0205 (idx  5) — AC output active power in other SRNE firmware
+      //   0x0202 (idx  2) — AC output power in simpler SRNE firmware
+      //   0x020B (idx 11) — load power in yet another variant
+      loadPower: (() => {
+        if (!acRegs) return regs1[0x010C - REG_BATTERY_SOC];
+        const candidates = [13, 5, 2, 11]; // register offsets from 0x0200
+        for (const idx of candidates) {
+          if (acRegs[idx] > 0) { console.log(`[Poll] loadPower from 0x${(0x0200+idx).toString(16).toUpperCase()}=${acRegs[idx]}W`); return acRegs[idx]; }
+        }
+        console.warn('[Poll] All AC load candidates are 0 — load = 0');
+        return 0;
+      })(),
+      solarPanelVoltage: pvVoltage,
+      solarPanelCurrent: pvCurrent,
+      solarPanelPower:   solarPanelPower,
       chargingState:     regs1[0x0115 - REG_BATTERY_SOC],
       loadStatus:        regs1[0x0116 - REG_BATTERY_SOC],
       dailyGenerated:    dailyRegs[0] / 100,
