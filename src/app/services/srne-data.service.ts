@@ -32,12 +32,14 @@ export class SrneDataService implements OnDestroy {
   private _useMock$ = new BehaviorSubject<boolean>(true);
   private _status$ = new BehaviorSubject<ConnectionStatus>('demo');
   private _lastError$ = new BehaviorSubject<string>('');
+  private _lastPollTime$ = new BehaviorSubject<number | null>(null);
 
   readonly data$ = this._data$.asObservable();
   readonly connected$ = this._connected$.asObservable();
   readonly useMock$ = this._useMock$.asObservable();
   readonly status$ = this._status$.asObservable();
   readonly lastError$ = this._lastError$.asObservable();
+  readonly lastPollTime$ = this._lastPollTime$.asObservable();
 
   private pollSub?: Subscription;
   private pollRunning = false;
@@ -106,7 +108,8 @@ export class SrneDataService implements OnDestroy {
       this._connected$.next(false);
       this._useMock$.next(true);
       this._status$.next('error');
-      this.emitMock();
+      // Keep the last successful live data visible — do NOT replace with mock values.
+      if (!this._data$.getValue()) this.emitMock(); // only show mock if there's nothing yet
       return;
     }
 
@@ -119,6 +122,7 @@ export class SrneDataService implements OnDestroy {
     const dailyRegs = regs2 ?? [0, 0, 0, 0];
 
     this._lastError$.next('');
+    this._lastPollTime$.next(Date.now());
     this._connected$.next(true);
     this._useMock$.next(false);
     this._status$.next('live');

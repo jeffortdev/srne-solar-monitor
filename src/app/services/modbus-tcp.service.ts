@@ -248,14 +248,33 @@ export class ModbusTcpService {
       ]);
       rawResponse = result?.value as string | undefined;
     } catch (e: any) {
-      const isTimeout = /timeout/i.test(e?.message ?? '');
-      return {
-        stage: 'tcp_failed',
-        message: isTimeout
-          ? `TCP timeout after 6 s connecting to ${device.ip}:${device.port}. ` +
-            'Check: (1) phone is on the LSW-5 WiFi hotspot, (2) IP address is correct, (3) port is 8899.'
-          : `TCP error: "${e?.message}". Make sure your phone is connected to the LSW-5 WiFi and the IP address is correct.`
-      };
+      const msg: string = e?.message ?? '';
+      const isTimeout      = /timeout/i.test(msg);
+      const isUnreachable  = /unreachable|EHOSTUNREACH|ENETUNREACH/i.test(msg);
+      const isRefused      = /refused|ECONNREFUSED/i.test(msg);
+
+      let detail: string;
+      if (isUnreachable) {
+        detail =
+          `Host unreachable — the phone cannot route to ${device.ip}. ` +
+          `This almost always means the phone is NOT connected to the LSW-5 WiFi hotspot. ` +
+          `Go to Android WiFi settings, connect to the LSW-5 network (SSID usually "LSW-5_XXXXXX"), ` +
+          `then try again. The dongle's IP (${device.ip}) is only reachable on its own WiFi.`;
+      } else if (isRefused) {
+        detail =
+          `Connection refused at ${device.ip}:${device.port}. ` +
+          `The IP is reachable but nothing is listening on port ${device.port}. ` +
+          `Confirm the port is 8899 (not 80 which is the dongle web UI).`;
+      } else if (isTimeout) {
+        detail =
+          `TCP timeout after 6 s connecting to ${device.ip}:${device.port}. ` +
+          `Check: (1) phone is on the LSW-5 WiFi hotspot, (2) IP address is correct, (3) port is 8899.`;
+      } else {
+        detail =
+          `TCP error: "${msg}". ` +
+          `Make sure the phone is connected to the LSW-5 WiFi hotspot and the IP address is correct.`;
+      }
+      return { stage: 'tcp_failed', message: detail };
     }
 
     if (!rawResponse || rawResponse.length === 0) {
@@ -288,32 +307,9 @@ export class ModbusTcpService {
       };
     }
 
+    let values: number[];
     try {
-      const values = this.parseModbusResponse(modbusRaw, 23);
-      const toSigned16 = (v: number) => v > 0x7FFF ? v - 0x10000 : v;
-      const soc     = values[0x0100 - 0x0100];
-      const battV   = (values[0x0101 - 0x0100] / 100).toFixed(2);
-      const battA   = (toSigned16(values[0x0102 - 0x0100]) / 100).toFixed(2);
-      const battT   = (values[0x0108 - 0x0100] / 100).toFixed(1);
-      const pvV     = (values[0x010D - 0x0100] / 100).toFixed(2);
-      const pvA     = (values[0x010E - 0x0100] / 100).toFixed(2);
-      const pvW     = values[0x010F - 0x0100];
-      const loadV   = (values[0x010A - 0x0100] / 100).toFixed(2);
-      const loadA   = (values[0x010B - 0x0100] / 100).toFixed(2);
-      const loadW   = values[0x010C - 0x0100];
-      const chgState = values[0x0115 - 0x0100];
-      const chgLabel = ['Off', 'Bulk', 'Absorption', 'Float', 'Equalize', 'CV'][chgState] ?? `State ${chgState}`;
-      const loadOn  = values[0x0116 - 0x0100] ? 'ON' : 'OFF';
-      return {
-        stage: 'ok',
-        message: [
-          `Connected to ${device.ip}:${device.port}`,
-          `Battery : ${soc}%  |  ${battV} V  |  ${battA} A  |  ${battT} °C`,
-          `Solar   : ${pvV} V  |  ${pvA} A  |  ${pvW} W`,
-          `Load    : ${loadV} V  |  ${loadA} A  |  ${loadW} W  (${loadOn})`,
-          `Charging: ${chgLabel}`
-        ].join('\n')
-      };
+      values = this.parseModbusResponse(modbusRaw, 23);
     } catch (e: any) {
       return {
         stage: 'modbus_error',
@@ -322,5 +318,68 @@ export class ModbusTcpService {
           `Check the Slave ID (currently ${device.slaveId}) — most SRNE inverters use Slave ID 1.`
       };
     }
+
+    const toSigned16 = (v: number) => v > 0x7FFF ? v - 0x10000 : v;
+    const soc      = values[0x0100 - 0x0100];
+    const battV    = (values[0x0101 - 0x0100] / 100).toFixed(2);
+    const battA    = (toSigned16(values[0x0102 - 0x0100]) / 100).toFixed(2);
+    const battT    = (values[0x0108 - 0x0100] / 100).toFixed(1);
+    const pvV      = (values[0x010D - 0x0100] / 100).toFixed(2);
+    const pvA      = (values[0x010E - 0x0100] / 100).toFixed(2);
+    const pvW      = values[0x010F - 0x0100];
+    // DC load port (0x010A-0x010C) — may be 0 on hybrid inverters where load is on the AC output side
+    const dcLoadV  = (values[0x010A - 0x0100] / 100).toFixed(2);
+    const dcLoadA  = (values[0x010B - 0x0100] / 100).toFixed(2);
+    const dcLoadW  = values[0x010C - 0x0100];
+    const chgState = values[0x0115 - 0x0100];
+    const chgLabel = ['Off', 'Bulk', 'Absorption', 'Float', 'Equalize', 'CV'][chgState] ?? `State ${chgState}`;
+    const dcLoadOn = values[0x0116 - 0x0100] ? 'ON' : 'OFF';
+
+    // Raw dump of all 23 registers so incorrect register mappings can be spotted
+    const rawDump = values.map((v, i) =>
+      `0x${(0x0100 + i).toString(16).toUpperCase().padStart(4, '0')}=${v}`
+    ).join('  ');
+
+    // Also probe the AC output block (0x0200-0x020F) — used on hybrid inverters
+    // for the inverter output load (AC watts to house loads)
+    await new Promise(r => setTimeout(r, 400));
+    let acBlock: number[] | null = null;
+    try {
+      const acFrame  = this.buildModbusRequest(device.slaveId, 0x0200, 16);
+      const acPacket = this.buildSolarmanV5Request(device.serialNumber, acFrame);
+      const acText   = String.fromCharCode(...acPacket);
+      const acTimeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000));
+      const acResult  = await Promise.race([
+        SocketConnect.open({ ip: device.ip, port: String(device.port), text: acText }),
+        acTimeout
+      ]);
+      if (acResult?.value && acResult.value.length > 0) {
+        const acMbRaw = this.extractModbusFromV5Response(acResult.value);
+        acBlock = this.parseModbusResponse(acMbRaw, 16);
+      }
+    } catch { /* AC block not supported on this firmware — ignore */ }
+
+    const lines = [
+      `Connected to ${device.ip}:${device.port}`,
+      `Battery : ${soc}%  |  ${battV} V  |  ${battA} A  |  ${battT} °C`,
+      `Solar   : ${pvV} V  |  ${pvA} A  |  ${pvW} W`,
+      `DC Load : ${dcLoadV} V  |  ${dcLoadA} A  |  ${dcLoadW} W  (${dcLoadOn})`,
+      `Charging: ${chgLabel}`,
+    ];
+
+    if (acBlock) {
+      const acV = (acBlock[0] / 100).toFixed(1);
+      const acA = (acBlock[1] / 100).toFixed(2);
+      const acW = acBlock[3] ?? acBlock[2];
+      lines.push(`AC Out  : ${acV} V  |  ${acA} A  |  ${acW} W`);
+      lines.push(`AC regs (0x0200+): ${acBlock.map((v, i) => `0x${(0x0200+i).toString(16).toUpperCase()}=${v}`).join('  ')}`);
+    } else {
+      lines.push(`AC Out  : (0x0200 block not supported or returned no data)`);
+    }
+
+    lines.push(`--- Raw 0x0100 block ---`);
+    lines.push(rawDump);
+
+    return { stage: 'ok', message: lines.join('\n') };
   }
 }

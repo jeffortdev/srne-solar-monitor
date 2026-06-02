@@ -17,6 +17,7 @@ export class Tab1Page implements OnInit, OnDestroy {
   connected = false;
   status: ConnectionStatus = 'demo';
   errorDetail = '';
+  lastUpdated: string = '';
   showGrid = false;
 
   private subs: Subscription[] = [];
@@ -34,6 +35,9 @@ export class Tab1Page implements OnInit, OnDestroy {
       this.srne.data$.subscribe(d => this.data = d),
       this.srne.connected$.subscribe(c => this.connected = c),
       this.srne.lastError$.subscribe(e => this.errorDetail = e),
+      this.srne.lastPollTime$.subscribe(t => {
+        this.lastUpdated = t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+      }),
       this.srne.status$.subscribe(s => {
         this.status = s;
         if (s !== this.lastStatus) {
@@ -58,7 +62,7 @@ export class Tab1Page implements OnInit, OnDestroy {
       const t = await this.toastCtrl.create({ message: '✓ Connected — live data active', duration: 2500, color: 'success', position: 'bottom' });
       await t.present();
     } else if (s === 'error') {
-      const t = await this.toastCtrl.create({ message: 'Connection failed — showing demo data. Check Settings → Test Connection for details.', duration: 4000, color: 'warning', position: 'bottom' });
+      const t = await this.toastCtrl.create({ message: 'Connection failed — last live data is still shown. Check Settings → Test Connection for details.', duration: 4000, color: 'warning', position: 'bottom' });
       await t.present();
     }
   }
