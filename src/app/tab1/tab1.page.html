@@ -33,79 +33,101 @@
 
     <!-- ── Power Flow SVG Diagram ── -->
     <div class="flow-container" role="img" [attr.aria-label]="diagramAriaLabel">
-      <svg viewBox="0 0 320 260" xmlns="http://www.w3.org/2000/svg" class="flow-svg">
+      <svg viewBox="0 0 320 270" xmlns="http://www.w3.org/2000/svg" class="flow-svg">
 
-        <!-- Solar to Battery flow line -->
-        <path d="M 80 72 L 80 162"
-          class="flow-path"
-          [class.flow-active]="isSolarChargingBattery"
+        <!-- ═══ Flow Lines (all routes converge on the Inverter hub) ═══ -->
+
+        <!-- Solar ──► Inverter -->
+        <line x1="86" y1="74" x2="131" y2="108"
+          class="flow-path" [class.flow-active]="isSolarActive"
           stroke="var(--srne-solar-color)" aria-hidden="true"/>
 
-        <!-- Solar to Home flow line -->
-        <path d="M 100 60 Q 190 10 220 88"
-          class="flow-path"
-          [class.flow-active]="isSolarPoweringLoad"
-          stroke="var(--srne-solar-color)" aria-hidden="true"/>
-
-        <!-- Battery to Home flow line -->
-        <path d="M 100 180 Q 190 230 220 180"
-          class="flow-path"
-          [class.flow-active]="isBatteryPoweringLoad"
+        <!-- Inverter ↔ Battery -->
+        <line x1="131" y1="158" x2="86" y2="191"
+          class="flow-path" [class.flow-active]="isBatteryActive"
           stroke="var(--srne-battery-color)" aria-hidden="true"/>
 
-        <!-- Grid to Home (optional) -->
-        <path *ngIf="showGrid"
-          d="M 230 52 L 230 90"
+        <!-- Inverter ──► Load -->
+        <line x1="190" y1="133" x2="234" y2="133"
+          class="flow-path" [class.flow-active]="isLoadActive"
+          stroke="var(--srne-load-color)" aria-hidden="true"/>
+
+        <!-- Grid ──► Inverter (optional) -->
+        <line *ngIf="showGrid" x1="234" y1="74" x2="189" y2="108"
           class="flow-path flow-active"
           stroke="var(--srne-grid-color)" aria-hidden="true"/>
 
-        <!-- ── Solar Node ── -->
-        <g transform="translate(60,36)" aria-label="Solar Panel node">
-          <rect x="-32" y="-26" width="64" height="54" rx="12"
-            fill="var(--srne-node-bg)" stroke="var(--srne-solar-color)" stroke-width="2"/>
-          <text x="0" y="-8" text-anchor="middle" font-size="16" aria-hidden="true">&#9728;&#65039;</text>
-          <text x="0" y="8" text-anchor="middle" class="node-value">{{ fw(data?.solarPanelPower ?? 0) }}</text>
-          <text x="0" y="20" text-anchor="middle" class="node-label">Solar</text>
+        <!-- ═══ Solar Node — top-left ═══ -->
+        <g transform="translate(58,52)" aria-label="Solar Panel node">
+          <!-- no-border background -->
+          <rect x="-30" y="-26" width="60" height="52" rx="12" fill="var(--srne-node-bg)"/>
+          <!-- Solar panel icon: 3×2 cell grid with mount -->
+          <g transform="translate(0,-8)" aria-hidden="true">
+            <rect x="-15" y="-11" width="30" height="22" rx="2"
+              fill="var(--srne-solar-color)" opacity="0.18"/>
+            <rect x="-15" y="-11" width="30" height="22" rx="2"
+              fill="none" stroke="var(--srne-solar-color)" stroke-width="1.4"/>
+            <line x1="-15" y1="0" x2="15" y2="0"
+              stroke="var(--srne-solar-color)" stroke-width="0.9"/>
+            <line x1="-5" y1="-11" x2="-5" y2="11"
+              stroke="var(--srne-solar-color)" stroke-width="0.9"/>
+            <line x1="5" y1="-11" x2="5" y2="11"
+              stroke="var(--srne-solar-color)" stroke-width="0.9"/>
+            <line x1="0" y1="11" x2="0" y2="15"
+              stroke="var(--srne-solar-color)" stroke-width="2" stroke-linecap="round"/>
+            <line x1="-8" y1="15" x2="8" y2="15"
+              stroke="var(--srne-solar-color)" stroke-width="2" stroke-linecap="round"/>
+          </g>
+          <text x="0" y="14" text-anchor="middle" class="node-value">{{ fw(data?.solarPanelPower ?? 0) }}</text>
+          <text x="0" y="23" text-anchor="middle" class="node-label">Solar</text>
         </g>
 
-        <!-- ── Battery Node ── -->
-        <g transform="translate(60,182)" [attr.aria-label]="'Battery ' + (data?.batterySoc ?? 0) + ' percent'">
-          <rect x="-32" y="-26" width="64" height="54" rx="12"
-            fill="var(--srne-node-bg)" [attr.stroke]="batteryStrokeColor" stroke-width="2"/>
+        <!-- ═══ Battery Node — bottom-left ═══ -->
+        <g transform="translate(58,213)" [attr.aria-label]="'Battery ' + (data?.batterySoc ?? 0) + ' percent'">
+          <rect x="-30" y="-30" width="60" height="62" rx="12" fill="var(--srne-node-bg)"/>
+          <text x="0" y="-13" text-anchor="middle" font-size="22" aria-hidden="true">&#128267;</text>
+          <text x="0" y="5" text-anchor="middle" class="node-value">{{ data?.batterySoc ?? 0 }}%</text>
           <!-- SOC bar background -->
-          <rect x="-22" y="14" width="44" height="7" rx="3" fill="#222" aria-hidden="true"/>
+          <rect x="-21" y="10" width="42" height="6" rx="3" fill="#333" aria-hidden="true"/>
           <!-- SOC bar fill -->
-          <rect x="-22" y="14"
-            [attr.width]="44 * ((data?.batterySoc ?? 0) / 100)"
-            height="7" rx="3"
-            [attr.fill]="batteryStrokeColor" aria-hidden="true"/>
-          <text x="0" y="-8" text-anchor="middle" font-size="14" aria-hidden="true">&#128267;</text>
-          <text x="0" y="8" text-anchor="middle" class="node-value">{{ data?.batterySoc ?? 0 }}%</text>
-          <text x="0" y="-18" text-anchor="middle" class="node-label">{{ data?.batteryVoltage?.toFixed(1) ?? '--' }}V</text>
+          <rect x="-21" y="10"
+            [attr.width]="42 * ((data?.batterySoc ?? 0) / 100)"
+            height="6" rx="3" [attr.fill]="batteryStrokeColor" aria-hidden="true"/>
+          <text x="0" y="-21" text-anchor="middle" class="node-label">{{ data?.batteryVoltage?.toFixed(1) ?? '--' }}V</text>
         </g>
 
-        <!-- ── Home / Load Node ── -->
-        <g transform="translate(248,134)" aria-label="Home Load node">
-          <rect x="-32" y="-26" width="64" height="54" rx="12"
-            fill="var(--srne-node-bg)" stroke="var(--srne-load-color)" stroke-width="2"/>
-          <text x="0" y="-8" text-anchor="middle" font-size="16" aria-hidden="true">&#127968;</text>
-          <text x="0" y="8" text-anchor="middle" class="node-value">{{ fw(data?.loadPower ?? 0) }}</text>
-          <text x="0" y="20" text-anchor="middle" class="node-label">Load</text>
+        <!-- ═══ Inverter Hub — centre ═══ -->
+        <g transform="translate(160,133)" aria-label="SRNE Inverter hub">
+          <!-- slightly larger, tinted background -->
+          <rect x="-32" y="-30" width="64" height="60" rx="14" fill="var(--srne-node-bg)"/>
+          <rect x="-32" y="-30" width="64" height="60" rx="14"
+            fill="var(--ion-color-primary)" opacity="0.08"/>
+          <!-- AC sine-wave icon (DC→AC conversion symbol) -->
+          <g transform="translate(0,-10)" aria-hidden="true">
+            <rect x="-17" y="-12" width="34" height="24" rx="4"
+              fill="var(--ion-color-primary)" opacity="0.15"/>
+            <path d="M -12 1 Q -8 -8 -4 1 Q 0 10 4 1 Q 8 -8 12 1"
+              fill="none" stroke="var(--ion-color-primary)"
+              stroke-width="2" stroke-linecap="round"/>
+          </g>
+          <text x="0" y="16" text-anchor="middle" class="inv-label">INVERTER</text>
         </g>
 
-        <!-- ── Grid Node (optional) ── -->
-        <g *ngIf="showGrid" transform="translate(248,36)" aria-label="Power Grid node">
-          <rect x="-32" y="-26" width="64" height="54" rx="12"
-            fill="var(--srne-node-bg)" stroke="var(--srne-grid-color)" stroke-width="2"/>
-          <text x="0" y="-8" text-anchor="middle" font-size="16" aria-hidden="true">&#9889;</text>
-          <text x="0" y="8" text-anchor="middle" class="node-value">Grid</text>
-          <text x="0" y="20" text-anchor="middle" class="node-label">Mains</text>
+        <!-- ═══ Load / Home Node — right ═══ -->
+        <g transform="translate(262,133)" aria-label="Home Load node">
+          <rect x="-30" y="-26" width="60" height="52" rx="12" fill="var(--srne-node-bg)"/>
+          <text x="0" y="-7" text-anchor="middle" font-size="22" aria-hidden="true">&#127968;</text>
+          <text x="0" y="11" text-anchor="middle" class="node-value">{{ fw(data?.loadPower ?? 0) }}</text>
+          <text x="0" y="21" text-anchor="middle" class="node-label">Load</text>
         </g>
 
-        <!-- MPPT controller hub -->
-        <circle cx="80" cy="128" r="9" fill="var(--srne-solar-color)" opacity="0.75"
-          aria-label="MPPT charge controller"/>
-        <text x="95" y="132" class="node-label small-label" aria-hidden="true">MPPT</text>
+        <!-- ═══ Grid Node — top-right (optional) ═══ -->
+        <g *ngIf="showGrid" transform="translate(262,52)" aria-label="Power Grid node">
+          <rect x="-30" y="-26" width="60" height="52" rx="12" fill="var(--srne-node-bg)"/>
+          <text x="0" y="-7" text-anchor="middle" font-size="22" aria-hidden="true">&#9889;</text>
+          <text x="0" y="11" text-anchor="middle" class="node-value">Grid</text>
+          <text x="0" y="21" text-anchor="middle" class="node-label">Mains</text>
+        </g>
 
       </svg>
     </div>

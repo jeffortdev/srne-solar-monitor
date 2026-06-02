@@ -59,7 +59,7 @@
 }
 
 .node-value {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   fill: var(--ion-text-color);
 }
@@ -69,8 +69,11 @@
   fill: var(--ion-color-medium);
 }
 
-.small-label {
+.inv-label {
   font-size: 8px;
+  font-weight: 700;
+  fill: var(--ion-color-primary);
+  letter-spacing: 0.5px;
 }
 
 // Flow path base

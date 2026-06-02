@@ -103,6 +103,18 @@ export class Tab1Page implements OnInit, OnDestroy {
     return (this.data?.batteryCurrent ?? 0) < 0 && (this.data?.loadStatus ?? 0) === 1;
   }
 
+  get isSolarActive(): boolean {
+    return (this.data?.solarPanelPower ?? 0) > 0;
+  }
+
+  get isBatteryActive(): boolean {
+    return Math.abs(this.data?.batteryCurrent ?? 0) > 0.1;
+  }
+
+  get isLoadActive(): boolean {
+    return (this.data?.loadPower ?? 0) > 0;
+  }
+
   get diagramAriaLabel(): string {
     if (!this.data) return 'Power flow diagram — no data';
     return `Solar ${this.fw(this.data.solarPanelPower)}, Battery ${this.data.batterySoc}%, Load ${this.fw(this.data.loadPower)}`;
