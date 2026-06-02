@@ -210,6 +210,7 @@ export class SrneDataService implements OnDestroy {
       loadCurrent:       parseFloat((loadPower / batteryV).toFixed(2)),
       loadPower,
       gridPower:         0,  // no grid in mock/demo mode
+      chargingState:     solarPower > 10 ? 1 : 0,
       loadStatus:        1,
       dailyGenerated:    parseFloat((solarFactor * 1.8 + 0.2).toFixed(2)),
       dailyConsumed:     parseFloat((0.5 + this.mockPhase * 0.002).toFixed(2)),
