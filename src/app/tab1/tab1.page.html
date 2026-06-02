@@ -64,7 +64,7 @@
           <rect x="-32" y="-26" width="64" height="54" rx="12"
             fill="var(--srne-node-bg)" stroke="var(--srne-solar-color)" stroke-width="2"/>
           <text x="0" y="-8" text-anchor="middle" font-size="16" aria-hidden="true">&#9728;&#65039;</text>
-          <text x="0" y="8" text-anchor="middle" class="node-value">{{ data?.solarPanelPower ?? 0 }}W</text>
+          <text x="0" y="8" text-anchor="middle" class="node-value">{{ fw(data?.solarPanelPower ?? 0) }}</text>
           <text x="0" y="20" text-anchor="middle" class="node-label">Solar</text>
         </g>
 
@@ -89,7 +89,7 @@
           <rect x="-32" y="-26" width="64" height="54" rx="12"
             fill="var(--srne-node-bg)" stroke="var(--srne-load-color)" stroke-width="2"/>
           <text x="0" y="-8" text-anchor="middle" font-size="16" aria-hidden="true">&#127968;</text>
-          <text x="0" y="8" text-anchor="middle" class="node-value">{{ data?.loadPower ?? 0 }}W</text>
+          <text x="0" y="8" text-anchor="middle" class="node-value">{{ fw(data?.loadPower ?? 0) }}</text>
           <text x="0" y="20" text-anchor="middle" class="node-label">Load</text>
         </g>
 
@@ -115,9 +115,9 @@
       <ion-row>
         <ion-col size="3">
           <div class="stat-chip" style="border-color: var(--srne-solar-color)"
-            [attr.aria-label]="'Solar power ' + (data?.solarPanelPower ?? 0) + ' watts'">
+            [attr.aria-label]="'Solar power ' + fw(data?.solarPanelPower ?? 0)">
             <div class="stat-val" style="color: var(--srne-solar-color)">
-              {{ data?.solarPanelPower ?? 0 }}<span class="stat-unit">W</span>
+              {{ fw(data?.solarPanelPower ?? 0) }}
             </div>
             <div class="stat-name">Solar</div>
           </div>
@@ -133,20 +133,20 @@
         </ion-col>
         <ion-col size="3">
           <div class="stat-chip" style="border-color: var(--srne-load-color)"
-            [attr.aria-label]="'Load power ' + (data?.loadPower ?? 0) + ' watts'">
+            [attr.aria-label]="'Usage ' + fw(data?.loadPower ?? 0)">
             <div class="stat-val" style="color: var(--srne-load-color)">
-              {{ data?.loadPower ?? 0 }}<span class="stat-unit">W</span>
+              {{ fw(data?.loadPower ?? 0) }}
             </div>
-            <div class="stat-name">Load</div>
+            <div class="stat-name">Usage</div>
           </div>
         </ion-col>
         <ion-col size="3">
-          <div class="stat-chip" style="border-color: #a0a0a0"
-            [attr.aria-label]="'Battery voltage ' + (data?.batteryVoltage?.toFixed(1) ?? '--') + ' volts'">
-            <div class="stat-val" style="color: #a0a0a0">
-              {{ data?.batteryVoltage?.toFixed(1) ?? '--' }}<span class="stat-unit">V</span>
+          <div class="stat-chip" [style.border-color]="batteryPowerColor"
+            [attr.aria-label]="batteryPowerLabel + ' ' + fw(batteryPowerW)">
+            <div class="stat-val" [style.color]="batteryPowerColor">
+              {{ fw(batteryPowerW) }}
             </div>
-            <div class="stat-name">Batt V</div>
+            <div class="stat-name">{{ batteryPowerLabel }}</div>
           </div>
         </ion-col>
       </ion-row>

@@ -105,7 +105,36 @@ export class Tab1Page implements OnInit, OnDestroy {
 
   get diagramAriaLabel(): string {
     if (!this.data) return 'Power flow diagram — no data';
-    return `Solar ${this.data.solarPanelPower}W, Battery ${this.data.batterySoc}%, Load ${this.data.loadPower}W`;
+    return `Solar ${this.fw(this.data.solarPanelPower)}, Battery ${this.data.batterySoc}%, Load ${this.fw(this.data.loadPower)}`;
+  }
+
+  /** Format watts as W or kW (e.g. 450 → "450W", 1234 → "1.2kW"). Negative values keep their sign. */
+  fw(watts: number): string {
+    const abs = Math.abs(watts);
+    const sign = watts < 0 ? '-' : '';
+    if (abs >= 1000) return sign + (abs / 1000).toFixed(1) + 'kW';
+    return sign + abs + 'W';
+  }
+
+  /** Battery power in watts: positive = charging, negative = discharging. */
+  get batteryPowerW(): number {
+    const v = this.data?.batteryVoltage ?? 0;
+    const i = this.data?.batteryCurrent ?? 0;
+    return Math.round(v * i);
+  }
+
+  get batteryPowerLabel(): string {
+    const p = this.batteryPowerW;
+    if (p > 5) return 'Charging';
+    if (p < -5) return 'Discharging';
+    return 'Battery W';
+  }
+
+  get batteryPowerColor(): string {
+    const p = this.batteryPowerW;
+    if (p > 5) return 'var(--srne-battery-color)';
+    if (p < -5) return 'var(--ion-color-warning)';
+    return '#a0a0a0';
   }
 }
 
