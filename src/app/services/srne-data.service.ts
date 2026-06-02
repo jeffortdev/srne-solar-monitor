@@ -5,20 +5,19 @@ import { ModbusTcpService } from './modbus-tcp.service';
 import { SettingsService } from './settings.service';
 import { HistoryService } from './history.service';
 
-// Modbus register base addresses (SRNE HESP4860S100-H via LSW-5 dongle, SolarmanV5 protocol)
-const REG_BATTERY_SOC     = 0x0100;
-const REG_BATTERY_VOLTAGE = 0x0101;
-const REG_BATTERY_CURRENT = 0x0102;
-const REG_BATT_TEMP       = 0x0108;
-const REG_LOAD_VOLTAGE    = 0x010A;
-const REG_LOAD_CURRENT    = 0x010B;
-const REG_LOAD_POWER      = 0x010C;
-const REG_PV_VOLTAGE      = 0x010D;
-const REG_PV_CURRENT      = 0x010E;
-const REG_PV_POWER        = 0x010F;
-const REG_CHARGE_STATE    = 0x0115;
-const REG_LOAD_STATUS     = 0x0116;
-const REG_DAILY_GEN       = 0x3200;
+// Modbus register addresses — SRNE hybrid inverter (based on srne_asf.yaml from ha-solarman)
+// Reference: SRNE Solar Charge Inverter MODBUS Protocol v1.96
+const REG_BATTERY_SOC     = 0x0100;  // Battery SoC (%)
+const REG_BATTERY_VOLTAGE = 0x0101;  // Battery Voltage (÷100 → V)
+const REG_BATTERY_CURRENT = 0x0102;  // Battery Current signed (÷100 → A)
+const REG_PV1_VOLTAGE     = 0x0107;  // PV1 Voltage (÷10 → V, scale 0.1)
+const REG_PV1_CURRENT     = 0x0108;  // PV1 Current (÷10 → A, scale 0.1)
+const REG_PV1_POWER       = 0x0109;  // PV1 Power (W)
+const REG_PV_POWER        = 0x010A;  // PV Total Power (W) — primary solar register
+const REG_CHARGE_STATE    = 0x0115;  // Charging state
+const REG_LOAD_STATUS     = 0x0116;  // Load output on/off
+const REG_LOAD_POWER      = 0x021B;  // Load L1 Active Power (W) — in inverter block
+const REG_DAILY_GEN       = 0x3200;  // Daily generated (kWh ÷100)
 
 const MOCK_INTERVAL_SEC = 2;
 
@@ -96,10 +95,10 @@ export class SrneDataService implements OnDestroy {
       return;
     }
 
-    // Three sequential reads — LSW-5 dongle only handles one TCP connection at a time.
-    // ① 0x0100-0x0116 (23 regs) — battery, solar, DC load
-    // ② 0x0200-0x0206  (7 regs) — AC output: grid, inverter voltage/freq, UPS+home load power
-    // ③ 0x3200-0x3203  (4 regs) — daily energy totals (optional, not on all firmware)
+    // Two sequential reads — LSW-5 dongle only handles one TCP connection at a time.
+    // ① 0x0100×23 regs — battery (SoC/V/I), PV power (0x010A), charging state
+    // ② 0x021B×2 regs — Load L1 Active Power (W) + Apparent Power (VA)
+    // ③ 0x3200×4 regs — daily energy totals (optional)
     const regs1 = await this.modbus.readHoldingRegisters(device, REG_BATTERY_SOC, 23);
     if (!regs1) {
       this._lastError$.next(
@@ -118,15 +117,14 @@ export class SrneDataService implements OnDestroy {
     // Short pause to let the dongle close its previous TCP session cleanly
     await new Promise(r => setTimeout(r, 400));
 
-    // AC output block (0x0200-0x020F, 16 regs) — HESP4860S100-H is a hybrid inverter; all
-    // loads are on the AC output side. Multiple registers are tried in documented priority
-    // order because different SRNE firmware versions place the load-active-power value
-    // at different offsets within this block.
-    const acRegs = await this.modbus.readHoldingRegisters(device, 0x0200, 16);
-    if (acRegs) {
-      console.log('[Poll] AC block (0x0200-0x020F):', acRegs.map((v, i) => `0x${(0x0200+i).toString(16).toUpperCase()}=${v}`).join(' '));
+    // Load L1 power block (0x021B-0x021C) — inverter AC output load
+    //   0x021B = Load L1 Active Power (W)
+    //   0x021C = Load L1 Apparent Power (VA)
+    const loadRegs = await this.modbus.readHoldingRegisters(device, 0x021B, 2);
+    if (loadRegs) {
+      console.log(`[Poll] Load regs: 0x021B=${loadRegs[0]}W (active)  0x021C=${loadRegs[1]}VA (apparent)`);
     } else {
-      console.warn('[Poll] AC block (0x0200) read returned null — load will show 0');
+      console.warn('[Poll] Load block (0x021B) read returned null — load will show 0');
     }
 
     // Short pause before the optional daily stats read
@@ -145,46 +143,26 @@ export class SrneDataService implements OnDestroy {
 
     const toSigned16 = (v: number) => v > 0x7FFF ? v - 0x10000 : v;
 
-    // Solar power: derive from V×I (physically correct — always 0 at night when no
-    // current flows from the panels) rather than trusting register 0x010F directly.
-    // On the HESP4860S100-H hybrid inverter 0x010F can report inverter output or
-    // total charge power instead of raw PV input power, causing false non-zero readings.
-    const pvVoltage = regs1[0x010D - REG_BATTERY_SOC] / 100;
-    const pvCurrent = regs1[0x010E - REG_BATTERY_SOC] / 100;
-    const pvPowerVI = Math.round(pvVoltage * pvCurrent);
-    const pvPowerReg = regs1[0x010F - REG_BATTERY_SOC];
-    // Use V×I unless the register reports MORE (i.e. register is valid and V×I under-reads).
-    // Cap to register value so we never over-report; minimum 0.
-    const solarPanelPower = Math.max(0, pvPowerVI > 0 ? pvPowerVI : 0);
-    console.log(`[Poll] Solar: V=${pvVoltage}V  I=${pvCurrent}A  V×I=${pvPowerVI}W  reg0x010F=${pvPowerReg}W  → using ${solarPanelPower}W`);
+    // PV Total Power is at 0x010A (index 10 from base 0x0100) — already in block 1, no extra call
+    const solarPanelPower = Math.max(0, regs1[REG_PV_POWER - REG_BATTERY_SOC]);
+    const pvVoltage = regs1[REG_PV1_VOLTAGE - REG_BATTERY_SOC] / 10;
+    const pvCurrent = regs1[REG_PV1_CURRENT - REG_BATTERY_SOC] / 10;
+    console.log(`[Poll] Solar: 0x010A=${solarPanelPower}W  PV1 ${pvVoltage}V/${pvCurrent}A`);
 
     const data: SrneData = {
-      batterySoc:        regs1[0x0100 - REG_BATTERY_SOC],
-      batteryVoltage:    regs1[0x0101 - REG_BATTERY_SOC] / 100,
-      batteryCurrent:    toSigned16(regs1[0x0102 - REG_BATTERY_SOC]) / 100,
-      batteryTemp:       regs1[0x0108 - REG_BATTERY_SOC] / 100,
-      loadVoltage:       regs1[0x010A - REG_BATTERY_SOC] / 100,
-      loadCurrent:       regs1[0x010B - REG_BATTERY_SOC] / 100,
-      // Prefer AC output active power for hybrid inverters; DC load port (0x010C) is 0 on HESP.
-      // Try documented candidate registers in priority order (first non-zero wins):
-      //   0x020D (idx 13) — load active power in some SRNE/Deye hybrid firmware
-      //   0x0205 (idx  5) — AC output active power in other SRNE firmware
-      //   0x0202 (idx  2) — AC output power in simpler SRNE firmware
-      //   0x020B (idx 11) — load power in yet another variant
-      loadPower: (() => {
-        if (!acRegs) return regs1[0x010C - REG_BATTERY_SOC];
-        const candidates = [13, 5, 2, 11]; // register offsets from 0x0200
-        for (const idx of candidates) {
-          if (acRegs[idx] > 0) { console.log(`[Poll] loadPower from 0x${(0x0200+idx).toString(16).toUpperCase()}=${acRegs[idx]}W`); return acRegs[idx]; }
-        }
-        console.warn('[Poll] All AC load candidates are 0 — load = 0');
-        return 0;
-      })(),
+      batterySoc:        regs1[REG_BATTERY_SOC - REG_BATTERY_SOC],
+      batteryVoltage:    regs1[REG_BATTERY_VOLTAGE - REG_BATTERY_SOC] / 100,
+      batteryCurrent:    toSigned16(regs1[REG_BATTERY_CURRENT - REG_BATTERY_SOC]) / 100,
+      batteryTemp:       toSigned16(regs1[0x0103 - REG_BATTERY_SOC]) / 10,
+      loadVoltage:       0,
+      loadCurrent:       0,
+      // 0x021B = Load L1 Active Power (W) per SRNE MODBUS Protocol v1.96
+      loadPower:         loadRegs ? loadRegs[0] : 0,
       solarPanelVoltage: pvVoltage,
       solarPanelCurrent: pvCurrent,
       solarPanelPower:   solarPanelPower,
-      chargingState:     regs1[0x0115 - REG_BATTERY_SOC],
-      loadStatus:        regs1[0x0116 - REG_BATTERY_SOC],
+      chargingState:     regs1[REG_CHARGE_STATE - REG_BATTERY_SOC],
+      loadStatus:        regs1[REG_LOAD_STATUS - REG_BATTERY_SOC],
       dailyGenerated:    dailyRegs[0] / 100,
       dailyConsumed:     dailyRegs[1] / 100,
       dailyChargeAh:     dailyRegs[2] / 100,

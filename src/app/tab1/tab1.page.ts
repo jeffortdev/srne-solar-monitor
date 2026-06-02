@@ -115,6 +115,15 @@ export class Tab1Page implements OnInit, OnDestroy {
     return (this.data?.loadPower ?? 0) > 0;
   }
 
+  /** Grid power in watts derived from energy balance: positive = importing from grid. */
+  get gridPowerW(): number {
+    return (this.data?.loadPower ?? 0) - (this.data?.solarPanelPower ?? 0) + this.batteryPowerW;
+  }
+
+  get isGridActive(): boolean {
+    return this.gridPowerW > 5;
+  }
+
   get diagramAriaLabel(): string {
     if (!this.data) return 'Power flow diagram — no data';
     return `Solar ${this.fw(this.data.solarPanelPower)}, Battery ${this.data.batterySoc}%, Load ${this.fw(this.data.loadPower)}`;

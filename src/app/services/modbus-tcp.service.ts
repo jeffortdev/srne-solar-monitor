@@ -323,70 +323,49 @@ export class ModbusTcpService {
     const soc      = values[0x0100 - 0x0100];
     const battV    = (values[0x0101 - 0x0100] / 100).toFixed(2);
     const battA    = (toSigned16(values[0x0102 - 0x0100]) / 100).toFixed(2);
-    const battT    = (values[0x0108 - 0x0100] / 100).toFixed(1);
-    const pvVnum   = values[0x010D - 0x0100] / 100;
-    const pvAnum   = values[0x010E - 0x0100] / 100;
-    const pvV      = pvVnum.toFixed(2);
-    const pvA      = pvAnum.toFixed(2);
-    const pvW      = values[0x010F - 0x0100];              // raw register (may be wrong on HESP)
-    const pvWvi    = Math.round(pvVnum * pvAnum);           // physically derived V×I
-    // DC load port (0x010A-0x010C) — may be 0 on hybrid inverters where load is on the AC output side
-    const dcLoadV  = (values[0x010A - 0x0100] / 100).toFixed(2);
-    const dcLoadA  = (values[0x010B - 0x0100] / 100).toFixed(2);
-    const dcLoadW  = values[0x010C - 0x0100];
+    const battT    = (toSigned16(values[0x0103 - 0x0100]) / 10).toFixed(1);
+    const pv1V     = (values[0x0107 - 0x0100] / 10).toFixed(1);
+    const pv1A     = (values[0x0108 - 0x0100] / 10).toFixed(1);
+    const pv1W     = values[0x0109 - 0x0100];
+    const pvTotalW = values[0x010A - 0x0100];   // PV Total Power — what the app uses
     const chgState = values[0x0115 - 0x0100];
     const chgLabel = ['Off', 'Bulk', 'Absorption', 'Float', 'Equalize', 'CV'][chgState] ?? `State ${chgState}`;
-    const dcLoadOn = values[0x0116 - 0x0100] ? 'ON' : 'OFF';
+    const loadOn   = values[0x0116 - 0x0100] ? 'ON' : 'OFF';
 
     // Raw dump of all 23 registers so incorrect register mappings can be spotted
     const rawDump = values.map((v, i) =>
       `0x${(0x0100 + i).toString(16).toUpperCase().padStart(4, '0')}=${v}`
     ).join('  ');
 
-    // Also probe the AC output block (0x0200-0x020F) — used on hybrid inverters
-    // for the inverter output load (AC watts to house loads)
+    // Probe load block 0x021B-0x021C (Load L1 Active + Apparent Power per SRNE MODBUS Protocol v1.96)
     await new Promise(r => setTimeout(r, 400));
-    let acBlock: number[] | null = null;
+    let loadBlock: number[] | null = null;
     try {
-      const acFrame  = this.buildModbusRequest(device.slaveId, 0x0200, 16);
-      const acPacket = this.buildSolarmanV5Request(device.serialNumber, acFrame);
-      const acText   = String.fromCharCode(...acPacket);
-      const acTimeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000));
-      const acResult  = await Promise.race([
-        SocketConnect.open({ ip: device.ip, port: String(device.port), text: acText }),
-        acTimeout
+      const loadFrame  = this.buildModbusRequest(device.slaveId, 0x021B, 2);
+      const loadPacket = this.buildSolarmanV5Request(device.serialNumber, loadFrame);
+      const loadText   = String.fromCharCode(...loadPacket);
+      const loadTimeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000));
+      const loadResult  = await Promise.race([
+        SocketConnect.open({ ip: device.ip, port: String(device.port), text: loadText }),
+        loadTimeout
       ]);
-      if (acResult?.value && acResult.value.length > 0) {
-        const acMbRaw = this.extractModbusFromV5Response(acResult.value);
-        acBlock = this.parseModbusResponse(acMbRaw, 16);
+      if (loadResult?.value && loadResult.value.length > 0) {
+        const loadMbRaw = this.extractModbusFromV5Response(loadResult.value);
+        loadBlock = this.parseModbusResponse(loadMbRaw, 2);
       }
-    } catch { /* AC block not supported on this firmware — ignore */ }
+    } catch { /* ignore if not supported */ }
 
     const lines = [
       `Connected to ${device.ip}:${device.port}`,
       `Battery : ${soc}%  |  ${battV} V  |  ${battA} A  |  ${battT} °C`,
-      `Solar   : ${pvV} V  |  ${pvA} A  |  V×I=${pvWvi} W  |  reg0x010F=${pvW} W  (app uses V×I)`,
-      `DC Load : ${dcLoadV} V  |  ${dcLoadA} A  |  ${dcLoadW} W  (${dcLoadOn})`,
-      `Charging: ${chgLabel}`,
+      `Solar   : PV1 ${pv1V}V / ${pv1A}A / ${pv1W}W  |  0x010A (PV Total) = ${pvTotalW} W  (app uses 0x010A)`,
+      `Charging: ${chgLabel}  |  Load output: ${loadOn}`,
     ];
 
-    if (acBlock) {
-      // Dump all 16 registers; flag those in a plausible AC-load-watts range (50..10000)
-      const acDump = acBlock.map((v, i) => {
-        const label = `0x${(0x0200+i).toString(16).toUpperCase()}=${v}`;
-        return (v >= 50 && v <= 10000) ? `**${label}**` : label; // ** = plausible watts
-      }).join('  ');
-      lines.push(`AC block (0x0200-0x020F) — ** = plausible load-watt candidates:`);
-      lines.push(acDump);
-      // Try the same candidates as doPoll so the diagnose confirms what the poll will use
-      const candIdxs = [13, 5, 2, 11]; // 0x020D, 0x0205, 0x0202, 0x020B
-      let chosen = 0, chosenReg = '?';
-      for (const idx of candIdxs) {
-        if (acBlock[idx] > 0) { chosen = acBlock[idx]; chosenReg = `0x${(0x0200+idx).toString(16).toUpperCase()}`; break; }
-      }
-      lines.push(`Load    : ${chosen} W  (from ${chosenReg}  — DC port 0x010C=${dcLoadW}W unused on hybrid)`);
+    if (loadBlock) {
+      lines.push(`Load    : 0x021B=${loadBlock[0]} W (active)  |  0x021C=${loadBlock[1]} VA (apparent)`);
     } else {
-      lines.push(`AC Out  : (0x0200 block not supported or returned no data)`);
+      lines.push(`Load    : (0x021B block not supported or returned no data)`);
     }
 
     lines.push(`--- Raw 0x0100 block ---`);
