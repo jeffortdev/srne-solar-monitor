@@ -60,10 +60,11 @@
     <span *ngIf="!testingConnection">Test Connection</span>
     <span *ngIf="testingConnection">Testing...</span>
   </ion-button>
-  <div class="test-result" *ngIf="testResult" role="status" [attr.aria-live]="'polite'">
+  <div class="test-result" *ngIf="testResult" role="status" [attr.aria-live]="'polite'"
+    [class.test-result--ok]="testResult.ok" [class.test-result--error]="!testResult.ok">
     <ion-icon [name]="testResult.ok ? 'checkmark-circle-outline' : 'alert-circle-outline'"
       [color]="testResult.ok ? 'success' : 'danger'" aria-hidden="true"></ion-icon>
-    {{ testResult.message }}
+    <span class="test-result__msg">{{ testResult.message }}</span>
   </div>
 
   <!-- ── Display Preferences ── -->

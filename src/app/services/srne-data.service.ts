@@ -38,6 +38,7 @@ export class SrneDataService implements OnDestroy {
   readonly status$ = this._status$.asObservable();
 
   private pollSub?: Subscription;
+  private pollRunning = false;
   private lastSnapshotMin = -1;
   private mockPhase = 0;
 
@@ -74,6 +75,17 @@ export class SrneDataService implements OnDestroy {
   // ── Real device poll ─────────────────────────────────────────────────────
 
   private async poll(): Promise<void> {
+    // Guard: skip if a previous poll is still in progress (dongle can't handle concurrent connections)
+    if (this.pollRunning) return;
+    this.pollRunning = true;
+    try {
+      await this.doPoll();
+    } finally {
+      this.pollRunning = false;
+    }
+  }
+
+  private async doPoll(): Promise<void> {
     const device = this.settings.activeDevice;
     if (!device) {
       this.emitMock();
@@ -90,6 +102,9 @@ export class SrneDataService implements OnDestroy {
       this.emitMock();
       return;
     }
+
+    // Short pause to let the dongle close its previous TCP session cleanly
+    await new Promise(r => setTimeout(r, 400));
 
     const regs2 = await this.modbus.readHoldingRegisters(device, REG_DAILY_GEN, 4);
     if (!regs2) {

@@ -232,7 +232,8 @@ export class ModbusTcpService {
       };
     }
 
-    const modbusFrame = this.buildModbusRequest(device.slaveId, 0x0100, 1);
+    // Read 23 registers (0x0100-0x0116) to get a full snapshot for display
+    const modbusFrame = this.buildModbusRequest(device.slaveId, 0x0100, 23);
     const v5Packet    = this.buildSolarmanV5Request(device.serialNumber, modbusFrame);
     const text        = String.fromCharCode(...v5Packet);
 
@@ -288,10 +289,30 @@ export class ModbusTcpService {
     }
 
     try {
-      const values = this.parseModbusResponse(modbusRaw, 1);
+      const values = this.parseModbusResponse(modbusRaw, 23);
+      const toSigned16 = (v: number) => v > 0x7FFF ? v - 0x10000 : v;
+      const soc     = values[0x0100 - 0x0100];
+      const battV   = (values[0x0101 - 0x0100] / 100).toFixed(2);
+      const battA   = (toSigned16(values[0x0102 - 0x0100]) / 100).toFixed(2);
+      const battT   = (values[0x0108 - 0x0100] / 100).toFixed(1);
+      const pvV     = (values[0x010D - 0x0100] / 100).toFixed(2);
+      const pvA     = (values[0x010E - 0x0100] / 100).toFixed(2);
+      const pvW     = values[0x010F - 0x0100];
+      const loadV   = (values[0x010A - 0x0100] / 100).toFixed(2);
+      const loadA   = (values[0x010B - 0x0100] / 100).toFixed(2);
+      const loadW   = values[0x010C - 0x0100];
+      const chgState = values[0x0115 - 0x0100];
+      const chgLabel = ['Off', 'Bulk', 'Absorption', 'Float', 'Equalize', 'CV'][chgState] ?? `State ${chgState}`;
+      const loadOn  = values[0x0116 - 0x0100] ? 'ON' : 'OFF';
       return {
         stage: 'ok',
-        message: `Connected! Register 0x0100 (Battery SOC) = ${values[0]} %.`
+        message: [
+          `Connected to ${device.ip}:${device.port}`,
+          `Battery : ${soc}%  |  ${battV} V  |  ${battA} A  |  ${battT} °C`,
+          `Solar   : ${pvV} V  |  ${pvA} A  |  ${pvW} W`,
+          `Load    : ${loadV} V  |  ${loadA} A  |  ${loadW} W  (${loadOn})`,
+          `Charging: ${chgLabel}`
+        ].join('\n')
       };
     } catch (e: any) {
       return {
