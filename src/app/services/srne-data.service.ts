@@ -31,11 +31,13 @@ export class SrneDataService implements OnDestroy {
   private _connected$ = new BehaviorSubject<boolean>(false);
   private _useMock$ = new BehaviorSubject<boolean>(true);
   private _status$ = new BehaviorSubject<ConnectionStatus>('demo');
+  private _lastError$ = new BehaviorSubject<string>('');
 
   readonly data$ = this._data$.asObservable();
   readonly connected$ = this._connected$.asObservable();
   readonly useMock$ = this._useMock$.asObservable();
   readonly status$ = this._status$.asObservable();
+  readonly lastError$ = this._lastError$.asObservable();
 
   private pollSub?: Subscription;
   private pollRunning = false;
@@ -96,6 +98,11 @@ export class SrneDataService implements OnDestroy {
     // 0x0100-0x0116 (23 regs), then 0x3200-0x3203 (4 regs)
     const regs1 = await this.modbus.readHoldingRegisters(device, REG_BATTERY_SOC, 23);
     if (!regs1) {
+      this._lastError$.next(
+        `Register read failed: 0x0100×23. ` +
+        `Check serial number (${device.serialNumber}), IP (${device.ip}:${device.port}), ` +
+        `Slave ID (${device.slaveId}), and WiFi connection.`
+      );
       this._connected$.next(false);
       this._useMock$.next(true);
       this._status$.next('error');
@@ -106,15 +113,12 @@ export class SrneDataService implements OnDestroy {
     // Short pause to let the dongle close its previous TCP session cleanly
     await new Promise(r => setTimeout(r, 400));
 
+    // Daily stats (0x3200) are optional — not all firmware versions support this block.
+    // Fall back to zeros rather than failing the whole poll.
     const regs2 = await this.modbus.readHoldingRegisters(device, REG_DAILY_GEN, 4);
-    if (!regs2) {
-      this._connected$.next(false);
-      this._useMock$.next(true);
-      this._status$.next('error');
-      this.emitMock();
-      return;
-    }
+    const dailyRegs = regs2 ?? [0, 0, 0, 0];
 
+    this._lastError$.next('');
     this._connected$.next(true);
     this._useMock$.next(false);
     this._status$.next('live');
@@ -134,10 +138,10 @@ export class SrneDataService implements OnDestroy {
       solarPanelPower:   regs1[0x010F - REG_BATTERY_SOC],
       chargingState:     regs1[0x0115 - REG_BATTERY_SOC],
       loadStatus:        regs1[0x0116 - REG_BATTERY_SOC],
-      dailyGenerated:    regs2[0] / 100,
-      dailyConsumed:     regs2[1] / 100,
-      dailyChargeAh:     regs2[2] / 100,
-      dailyDischargeAh:  regs2[3] / 100,
+      dailyGenerated:    dailyRegs[0] / 100,
+      dailyConsumed:     dailyRegs[1] / 100,
+      dailyChargeAh:     dailyRegs[2] / 100,
+      dailyDischargeAh:  dailyRegs[3] / 100,
       timestamp:         Date.now()
     };
     this._data$.next(data);

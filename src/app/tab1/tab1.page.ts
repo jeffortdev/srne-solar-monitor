@@ -16,6 +16,7 @@ export class Tab1Page implements OnInit, OnDestroy {
   data: SrneData | null = null;
   connected = false;
   status: ConnectionStatus = 'demo';
+  errorDetail = '';
   showGrid = false;
 
   private subs: Subscription[] = [];
@@ -32,6 +33,7 @@ export class Tab1Page implements OnInit, OnDestroy {
     this.subs.push(
       this.srne.data$.subscribe(d => this.data = d),
       this.srne.connected$.subscribe(c => this.connected = c),
+      this.srne.lastError$.subscribe(e => this.errorDetail = e),
       this.srne.status$.subscribe(s => {
         this.status = s;
         if (s !== this.lastStatus) {

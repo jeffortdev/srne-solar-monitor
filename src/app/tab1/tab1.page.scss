@@ -23,6 +23,13 @@
     color: var(--ion-color-warning);
   }
 
+  &.error-detail {
+    color: var(--ion-color-danger);
+    font-size: 0.78rem;
+    white-space: normal;
+    align-items: flex-start;
+  }
+
   .charging-state-label {
     color: var(--srne-solar-color);
     font-size: 0.75rem;
