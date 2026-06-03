@@ -26,7 +26,7 @@
       <ion-icon name="information-circle-outline" aria-hidden="true"></ion-icon>
       Demo mode &mdash; connect the HESP4860S100-H dongle and add a device in Settings
     </div>
-    <div class="device-bar error-detail" *ngIf="status === 'error' && errorDetail">
+    <div class="device-bar error-detail" *ngIf="status === 'error' && errorDetail && !hasBeenLive">
       <ion-icon name="alert-circle-outline" color="danger" aria-hidden="true"></ion-icon>
       {{ errorDetail }}
     </div>

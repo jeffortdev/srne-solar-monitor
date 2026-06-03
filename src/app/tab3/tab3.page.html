@@ -67,6 +67,15 @@
     <span class="test-result__msg">{{ testResult.message }}</span>
   </div>
 
+  <!-- ── Update Serial via QR ── -->
+  <ion-button expand="block" fill="outline" color="tertiary" class="qr-update-btn"
+    [disabled]="!activeDeviceId"
+    (click)="scanAndUpdateSerial()"
+    aria-label="Scan QR code to update serial number of active device">
+    <ion-icon slot="start" name="qr-code-outline" aria-hidden="true"></ion-icon>
+    Update Serial via QR Scan
+  </ion-button>
+
   <!-- ── Display Preferences ── -->
   <ion-list-header>
     <ion-label>Display</ion-label>
@@ -152,29 +161,12 @@
             <ion-input [(ngModel)]="form.slaveId" type="number" placeholder="1"
               aria-label="Modbus slave ID"></ion-input>
           </ion-item>
-          <ion-item>
-            <ion-label position="stacked">
-              Web UI Username
-              <ion-badge color="medium" style="margin-left:6px;font-size:10px;vertical-align:middle">reference only</ion-badge>
-            </ion-label>
-            <ion-input [(ngModel)]="form.username" placeholder="admin"
-              autocomplete="off" aria-label="Dongle web UI username (reference only, not used for connection)"></ion-input>
-          </ion-item>
-          <ion-item>
-            <ion-label position="stacked">
-              Web UI Password
-              <ion-badge color="medium" style="margin-left:6px;font-size:10px;vertical-align:middle">reference only</ion-badge>
-            </ion-label>
-            <ion-input [(ngModel)]="form.password" type="password" placeholder="admin"
-              autocomplete="off" aria-label="Dongle web UI password (reference only, not used for connection)"></ion-input>
-          </ion-item>
         </ion-list>
 
         <ion-item lines="none" class="hint-item">
           <ion-icon slot="start" name="information-circle-outline" color="medium" aria-hidden="true"></ion-icon>
           <ion-label class="ion-text-wrap" color="medium">
-            <p><strong>How the connection works:</strong> the app connects directly on port 8899 using the <em>SolarmanV5 protocol</em>. Only the <strong>IP, Port, and Serial Number</strong> are sent — username and password are <strong>never used</strong> for the data connection.</p>
-            <p style="margin-top:6px"><strong>Finding your Serial Number:</strong> open <code>http://&lt;IP&gt;</code> in a browser → log in (default admin / admin) → <em>Device Information</em>. It's the 10-digit number labelled <em>SN</em> or <em>Logger SN</em>.</p>
+            <p><strong>Finding your Serial Number:</strong> open <code>http://&lt;IP&gt;</code> in a browser → log in (default admin / admin) → <em>Device Information</em>. It's the 10-digit number labelled <em>SN</em> or <em>Logger SN</em>. Or tap <strong>Scan LSW-5 QR Code</strong> below to fill it automatically.</p>
           </ion-label>
         </ion-item>
 
@@ -183,7 +175,7 @@
           <ion-icon slot="start" name="qr-code-outline" aria-hidden="true"></ion-icon>
           Scan LSW-5 QR Code
         </ion-button>
-        <p class="qr-hint">Scans the LSW-5 QR code and fills in IP address, serial number, and dongle password automatically. Review the fields then tap Save.</p>
+        <p class="qr-hint">Scans the LSW-5 QR code sticker and fills in the Logger Serial Number automatically. Review the field then tap Save.</p>
 
         <ion-button expand="block" color="primary" class="save-btn"
           [disabled]="!form.name || !form.ip || !form.serialNumber"

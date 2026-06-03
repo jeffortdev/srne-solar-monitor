@@ -12,8 +12,6 @@ interface DeviceForm {
   port: number;
   slaveId: number;
   serialNumber: number;
-  username: string;
-  password: string;
 }
 
 @Component({
@@ -31,7 +29,7 @@ export class Tab3Page implements OnInit {
 
   showAddModal = false;
   editingDevice: DeviceConfig | null = null;
-  form: DeviceForm = { name: '', ip: '', port: 8899, slaveId: 1, serialNumber: 0, username: 'admin', password: 'admin' };
+  form: DeviceForm = { name: '', ip: '', port: 8899, slaveId: 1, serialNumber: 0 };
 
   testingConnection = false;
   testResult: { ok: boolean; message: string } | null = null;
@@ -75,7 +73,7 @@ export class Tab3Page implements OnInit {
 
   openAddDevice(): void {
     this.editingDevice = null;
-    this.form = { name: '', ip: '', port: 8899, slaveId: 1, serialNumber: 0, username: 'admin', password: 'admin' };
+    this.form = { name: '', ip: '', port: 8899, slaveId: 1, serialNumber: 0 };
     this.showAddModal = true;
   }
 
@@ -86,9 +84,7 @@ export class Tab3Page implements OnInit {
       ip: device.ip,
       port: device.port,
       slaveId: device.slaveId,
-      serialNumber: device.serialNumber,
-      username: device.username || 'admin',
-      password: device.password || 'admin'
+      serialNumber: device.serialNumber
     };
     this.showAddModal = true;
   }
@@ -105,9 +101,7 @@ export class Tab3Page implements OnInit {
       ip: this.form.ip.trim(),
       port: Number(this.form.port) || 8899,
       slaveId: Number(this.form.slaveId) || 1,
-      serialNumber: Number(this.form.serialNumber) || 0,
-      username: this.form.username?.trim() || 'admin',
-      password: this.form.password || 'admin'
+      serialNumber: Number(this.form.serialNumber) || 0
     };
     await this.settings.saveDevice(device);
     if (!this.settings.settings.activeDeviceId) {
@@ -144,22 +138,12 @@ export class Tab3Page implements OnInit {
         console.log('QR value scanned:', raw);
         
         const parsed = this.parseQrValue(raw);
-        if (parsed) {
+        if (parsed?.serialNumber) {
           console.log('QR parsed successfully:', parsed);
-          // Populate the form so the user can review before saving
-          this.form.ip   = parsed.ip;
-          this.form.port = parsed.port || 8899;
-          if (parsed.serialNumber) this.form.serialNumber = parsed.serialNumber;
-          if (parsed.password)     this.form.password     = parsed.password;
-          if (parsed.name)         this.form.name         = parsed.name;
-          if (!this.form.name)     this.form.name         = `HESP4860S100-H (${parsed.ip})`;
-
-          const filled: string[] = ['IP'];
-          if (parsed.serialNumber) filled.push('Serial Number');
-          if (parsed.password)     filled.push('Password');
-          await this.showToast(`QR scanned — filled: ${filled.join(', ')}. Review and tap Save.`, 'success');
+          this.form.serialNumber = parsed.serialNumber;
+          await this.showToast(`QR scanned — Serial Number filled. Review and tap Save.`, 'success');
         } else {
-          await this.showToast('Could not parse QR code. Try manual entry.', 'warning');
+          await this.showToast('Serial number not found in QR code. Try manual entry.', 'warning');
         }
       } else {
         await this.showToast('No QR code detected. Try again.', 'warning');
@@ -174,9 +158,8 @@ export class Tab3Page implements OnInit {
     }
   }
 
-  private async autoSaveDevice(parsed: { ip: string; port: number; serialNumber?: number; password?: string; name?: string }): Promise<void> {
+  private async autoSaveDevice(parsed: { ip: string; port: number; serialNumber?: number; name?: string }): Promise<void> {
     const deviceName = parsed.name || `HESP4860S100-H (${parsed.ip})`;
-    
     const id = crypto.randomUUID();
     const device: DeviceConfig = {
       id,
@@ -184,27 +167,60 @@ export class Tab3Page implements OnInit {
       ip: parsed.ip.trim(),
       port: parsed.port || 8899,
       slaveId: 1,
-      serialNumber: parsed.serialNumber || 0,
-      username: 'admin',
-      password: parsed.password || 'admin'
+      serialNumber: parsed.serialNumber || 0
     };
 
-    console.log('Auto-saving device:', device);
     await this.settings.saveDevice(device);
-    
-    // Set as active device if none is active
     if (!this.settings.settings.activeDeviceId) {
       await this.settings.setActiveDevice(id);
     }
-
     this.loadSettings();
     this.srne.restartPolling();
     this.closeAddDevice();
-    
     const notice = device.serialNumber
       ? `Device "${deviceName}" added!`
       : `Device "${deviceName}" added — please enter the serial number manually.`;
     await this.showToast(notice, 'success');
+  }
+
+  /**
+   * Standalone QR scan on the Settings page — scans the LSW-5 QR code and
+   * directly updates the serial number (and IP/port if changed) of the active device.
+   */
+  async scanAndUpdateSerial(): Promise<void> {
+    const device = this.settings.activeDevice;
+    if (!device) {
+      await this.showToast('No active device. Add a device first.', 'warning');
+      return;
+    }
+    try {
+      const granted = await BarcodeScanner.requestPermissions();
+      if (granted.camera !== 'granted' && granted.camera !== 'limited') {
+        await this.showToast('Camera permission denied. Please enable it in Settings.', 'warning');
+        return;
+      }
+      const result = await BarcodeScanner.scan({ formats: [BarcodeFormat.QrCode] });
+      if (!result.barcodes?.length) {
+        await this.showToast('No QR code detected. Try again.', 'warning');
+        return;
+      }
+      const raw = result.barcodes[0].rawValue ?? '';
+      const parsed = this.parseQrValue(raw);
+      if (!parsed?.serialNumber) {
+        await this.showToast('Serial number not found in QR code. Try manual entry.', 'warning');
+        return;
+      }
+      const updated: DeviceConfig = {
+        ...device,
+        serialNumber: parsed.serialNumber
+      };
+      await this.settings.saveDevice(updated);
+      this.loadSettings();
+      this.srne.restartPolling();
+      await this.showToast(`Serial number updated to ${parsed.serialNumber}.`, 'success');
+    } catch (e: any) {
+      await this.showToast(`Scan failed: ${e?.message || 'Unknown error'}`, 'danger');
+    }
   }
 
   private async showToast(message: string, color: 'success' | 'warning' | 'danger' = 'warning'): Promise<void> {
@@ -218,68 +234,45 @@ export class Tab3Page implements OnInit {
   }
 
   /**
-   * Parses QR payload from the LSW-5 dongle.
+   * Parses QR payload from the LSW-5 dongle sticker.
    *
+   * The LSW-5 QR code contains only the serial number and password — no IP.
    * Known formats:
-   *  1. JSON (most complete):
-   *       {"ap":"LSW-5_XXXXXX","ip":"10.10.100.254","port":8899,"sn":1720747149,"pwd":"12345678"}
-   *  2. Key-value pairs (common on sticker labels):
-   *       SN:1720747149,PWD:12345678,IP:10.10.100.254,PORT:8899
-   *       or with semicolons: SN:1720747149;PWD:12345678;IP:10.10.100.254
-   *  3. Colon-delimited: "10.10.100.254:8899:1720747149"
-   *  4. IP only: "10.10.100.254"
+   *  1. Key-value pairs:  SN:1720747149,PWD:12345678
+   *                       or semicolons: SN:1720747149;PWD:12345678
+   *  2. JSON:             {"sn":1720747149,"pwd":"12345678"}
+   *  3. Bare number:      1720747149
    *
-   * Returns null if no IP can be found.
+   * Returns null if no serial number can be found.
    */
-  private parseQrValue(
-    raw: string
-  ): { ip: string; port: number; serialNumber?: number; password?: string; name?: string } | null {
+  private parseQrValue(raw: string): { serialNumber: number } | null {
     const trimmed = raw.trim();
 
     // ── Format 1: JSON ──────────────────────────────────────────────────────
     if (trimmed.startsWith('{')) {
       try {
         const j = JSON.parse(trimmed);
-        if (j.ip) {
-          return {
-            ip:           j.ip,
-            port:         j.port         || 8899,
-            serialNumber: j.sn ?? j.serialNumber ?? j.serial ?? undefined,
-            password:     j.pwd ?? j.password ?? j.pass ?? undefined,
-            name:         j.ap  ?? j.ssid ?? j.name ?? undefined
-          };
-        }
+        const sn = j.sn ?? j.serialNumber ?? j.serial ?? j.SN;
+        if (sn) return { serialNumber: Number(sn) };
       } catch { /* not JSON */ }
     }
 
     // ── Format 2: key=value pairs (comma or semicolon separated) ───────────
-    // e.g.  SN:1720747149,PWD:12345678,IP:10.10.100.254,PORT:8899
-    if (/SN:|IP:|PWD:/i.test(trimmed)) {
+    if (/SN:/i.test(trimmed)) {
       const kv: Record<string, string> = {};
       trimmed.split(/[,;]/).forEach(pair => {
-        const [k, v] = pair.trim().split(':');
-        if (k && v !== undefined) kv[k.trim().toUpperCase()] = v.trim();
+        const firstColon = pair.indexOf(':');
+        if (firstColon < 0) return;
+        const k = pair.substring(0, firstColon).trim().toUpperCase();
+        const v = pair.substring(firstColon + 1).trim();
+        if (k) kv[k] = v;
       });
-
-      const ip = kv['IP'];
-      if (ip) {
-        return {
-          ip,
-          port:         kv['PORT'] ? parseInt(kv['PORT'], 10) : 8899,
-          serialNumber: kv['SN']   ? parseInt(kv['SN'],   10) : undefined,
-          password:     kv['PWD']  || undefined
-        };
-      }
+      if (kv['SN']) return { serialNumber: parseInt(kv['SN'], 10) };
     }
 
-    // ── Format 3: ip:port:serial ────────────────────────────────────────────
-    const ipPortMatch = trimmed.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):?(\d{4,5})?:?(\d{6,12})?/);
-    if (ipPortMatch) {
-      return {
-        ip:           ipPortMatch[1],
-        port:         ipPortMatch[2] ? parseInt(ipPortMatch[2], 10) : 8899,
-        serialNumber: ipPortMatch[3] ? parseInt(ipPortMatch[3], 10) : undefined
-      };
+    // ── Format 3: bare number (6–12 digits) ─────────────────────────────────
+    if (/^\d{6,12}$/.test(trimmed)) {
+      return { serialNumber: parseInt(trimmed, 10) };
     }
 
     return null;

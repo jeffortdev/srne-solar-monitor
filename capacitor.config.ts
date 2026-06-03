@@ -7,6 +7,11 @@ const config: CapacitorConfig = {
   plugins: {
     BarcodeScanner: {
       googleBarcodeScannerModuleInstallState: 'prompt'
+    },
+    LocalNotifications: {
+      smallIcon: 'ic_stat_solar',
+      iconColor: '#F4A124',
+      sound: 'default'
     }
   }
 };

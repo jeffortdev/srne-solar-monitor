@@ -19,6 +19,7 @@ export class Tab1Page implements OnInit, OnDestroy {
   errorDetail = '';
   lastUpdated: string = '';
   showGrid = false;
+  hasBeenLive = false;
 
   private subs: Subscription[] = [];
   private lastStatus: ConnectionStatus = 'demo';
@@ -59,9 +60,10 @@ export class Tab1Page implements OnInit, OnDestroy {
   private async onStatusChange(s: ConnectionStatus): Promise<void> {
     // Only show toasts for meaningful transitions, not the initial 'demo' state
     if (s === 'live') {
+      this.hasBeenLive = true;
       const t = await this.toastCtrl.create({ message: '✓ Connected — live data active', duration: 2500, color: 'success', position: 'bottom' });
       await t.present();
-    } else if (s === 'error') {
+    } else if (s === 'error' && !this.hasBeenLive) {
       const t = await this.toastCtrl.create({ message: 'Connection failed — last live data is still shown. Check Settings → Test Connection for details.', duration: 4000, color: 'warning', position: 'bottom' });
       await t.present();
     }
