@@ -86,10 +86,15 @@
   transition: opacity 0.4s;
 }
 
-// Active flow — animated marching ants
+// Active flow — animated marching ants (forward = toward line end)
 .flow-path.flow-active {
   opacity: 1;
   animation: marchAnts 1.2s linear infinite;
+}
+
+// Reverse flow — dashes march in the opposite direction (e.g. battery charging → inverter)
+.flow-path.flow-active.flow-reverse {
+  animation: marchAntsReverse 1.2s linear infinite;
 }
 
 @keyframes marchAnts {
@@ -98,8 +103,15 @@
   }
 }
 
+@keyframes marchAntsReverse {
+  to {
+    stroke-dashoffset: 26; // move dashes backward
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .flow-path.flow-active {
+  .flow-path.flow-active,
+  .flow-path.flow-active.flow-reverse {
     animation: none;
   }
 }
