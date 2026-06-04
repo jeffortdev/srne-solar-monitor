@@ -43,28 +43,29 @@
           stroke="var(--srne-solar-color)"
           aria-hidden="true"/>
         <circle *ngIf="isSolarActive" r="3.5" fill="var(--srne-solar-color)" aria-hidden="true">
-          <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
-            <mpath href="#solar-flow-path"/>
-          </animateMotion>
+          <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear"
+            path="M 86 74 L 131 108"/>
         </circle>
 
-        <!-- Inverter ↔ Battery (bi-directional) -->
+        <!-- Inverter ↔ Battery (bi-directional)
+             Discharging (negative power → flow Battery → Inverter): reverse dashes.
+             Charging  (positive power → flow Inverter → Battery): forward dashes. -->
         <line x1="131" y1="158" x2="86" y2="191"
           class="flow-path"
           [class.flow-active]="isBatteryActive"
-          [class.flow-reverse]="isBatteryActive && !isBatteryDischarging"
+          [class.flow-reverse]="isBatteryActive && isBatteryDischarging"
           stroke="var(--srne-battery-color)"
           aria-hidden="true"/>
         <ng-container *ngIf="isBatteryActive">
+          <!-- Discharging: dot travels Battery (86,191) → Inverter (131,158) -->
           <circle *ngIf="isBatteryDischarging" r="3.5" fill="var(--srne-battery-color)" aria-hidden="true">
-            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
-              <mpath href="#battery-path-discharge"/>
-            </animateMotion>
+            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear"
+              path="M 86 191 L 131 158"/>
           </circle>
+          <!-- Charging: dot travels Inverter (131,158) → Battery (86,191) -->
           <circle *ngIf="!isBatteryDischarging" r="3.5" fill="var(--srne-battery-color)" aria-hidden="true">
-            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
-              <mpath href="#battery-path-charge"/>
-            </animateMotion>
+            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear"
+              path="M 131 158 L 86 191"/>
           </circle>
         </ng-container>
 
@@ -74,12 +75,13 @@
           stroke="var(--srne-load-color)"
           aria-hidden="true"/>
         <circle *ngIf="isLoadActive" r="3.5" fill="var(--srne-load-color)" aria-hidden="true">
-          <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
-            <mpath href="#load-flow-path"/>
-          </animateMotion>
+          <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear"
+            path="M 189 158 L 234 191"/>
         </circle>
 
-        <!-- Grid ↔ Inverter (bi-directional, optional) -->
+        <!-- Grid ↔ Inverter (bi-directional, optional)
+             Exporting (negative power → flow Inverter → Grid): reverse dashes.
+             Importing (positive power → flow Grid → Inverter): forward dashes. -->
         <line *ngIf="showGrid" x1="234" y1="74" x2="189" y2="108"
           class="flow-path"
           [class.flow-active]="isGridActive"
@@ -87,25 +89,17 @@
           stroke="var(--srne-grid-color)"
           aria-hidden="true"/>
         <ng-container *ngIf="showGrid && isGridActive">
+          <!-- Importing: dot travels Grid (234,74) → Inverter (189,108) -->
           <circle *ngIf="!isGridExporting" r="3.5" fill="var(--srne-grid-color)" aria-hidden="true">
-            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
-              <mpath href="#grid-path-import"/>
-            </animateMotion>
+            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear"
+              path="M 234 74 L 189 108"/>
           </circle>
+          <!-- Exporting: dot travels Inverter (189,108) → Grid (234,74) -->
           <circle *ngIf="isGridExporting" r="3.5" fill="var(--srne-grid-color)" aria-hidden="true">
-            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
-              <mpath href="#grid-path-export"/>
-            </animateMotion>
+            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear"
+              path="M 189 108 L 234 74"/>
           </circle>
         </ng-container>
-
-        <!-- Hidden motion paths (direction matters: M = start, L = end) -->
-        <path id="solar-flow-path"      d="M 86 74  L 131 108" fill="none" stroke="none"/>
-        <path id="load-flow-path"       d="M 189 158 L 234 191" fill="none" stroke="none"/>
-        <path id="battery-path-discharge" d="M 131 158 L 86 191" fill="none" stroke="none"/>
-        <path id="battery-path-charge"    d="M 86 191  L 131 158" fill="none" stroke="none"/>
-        <path id="grid-path-import" d="M 234 74  L 189 108" fill="none" stroke="none"/>
-        <path id="grid-path-export" d="M 189 108 L 234 74"  fill="none" stroke="none"/>
 
         <!-- ═══ Solar Node — top-left ═══ -->
         <g transform="translate(58,52)" aria-label="Solar Panel node">
