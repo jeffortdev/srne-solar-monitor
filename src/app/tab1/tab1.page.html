@@ -35,38 +35,12 @@
     <div class="flow-container" role="img" [attr.aria-label]="diagramAriaLabel">
       <svg viewBox="0 0 320 270" xmlns="http://www.w3.org/2000/svg" class="flow-svg">
 
-        <defs>
-          <!-- Solar arrow (toward inverter, down-right) -->
-          <marker id="arrow-solar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-solar-color)"/>
-          </marker>
-          <!-- Load arrow (toward load, down-right) -->
-          <marker id="arrow-load" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-load-color)"/>
-          </marker>
-          <!-- Battery arrows -->
-          <marker id="arrow-battery-charge" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-battery-color)"/>
-          </marker>
-          <marker id="arrow-battery-discharge" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-battery-color)"/>
-          </marker>
-          <!-- Grid arrows -->
-          <marker id="arrow-grid-import" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-grid-color)"/>
-          </marker>
-          <marker id="arrow-grid-export" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-grid-color)"/>
-          </marker>
-        </defs>
-
         <!-- ═══ Flow Lines (all routes converge on the Inverter hub) ═══ -->
 
-        <!-- Solar ──► Inverter (one-way, arrow at inverter end) -->
+        <!-- Solar ──► Inverter (one-way) -->
         <line x1="86" y1="74" x2="131" y2="108"
           class="flow-path" [class.flow-active]="isSolarActive"
           stroke="var(--srne-solar-color)"
-          [attr.marker-end]="isSolarActive ? 'url(#arrow-solar)' : null"
           aria-hidden="true"/>
         <circle *ngIf="isSolarActive" r="3.5" fill="var(--srne-solar-color)" aria-hidden="true">
           <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
@@ -80,8 +54,6 @@
           [class.flow-active]="isBatteryActive"
           [class.flow-reverse]="isBatteryActive && !isBatteryDischarging"
           stroke="var(--srne-battery-color)"
-          [attr.marker-end]="isBatteryActive && isBatteryDischarging ? 'url(#arrow-battery-discharge)' : null"
-          [attr.marker-start]="isBatteryActive && !isBatteryDischarging ? 'url(#arrow-battery-charge)' : null"
           aria-hidden="true"/>
         <ng-container *ngIf="isBatteryActive">
           <circle *ngIf="isBatteryDischarging" r="3.5" fill="var(--srne-battery-color)" aria-hidden="true">
@@ -96,11 +68,10 @@
           </circle>
         </ng-container>
 
-        <!-- Inverter ──► Load (one-way, arrow at load end) -->
+        <!-- Inverter ──► Load (one-way) -->
         <line x1="189" y1="158" x2="234" y2="191"
           class="flow-path" [class.flow-active]="isLoadActive"
           stroke="var(--srne-load-color)"
-          [attr.marker-end]="isLoadActive ? 'url(#arrow-load)' : null"
           aria-hidden="true"/>
         <circle *ngIf="isLoadActive" r="3.5" fill="var(--srne-load-color)" aria-hidden="true">
           <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
@@ -114,8 +85,6 @@
           [class.flow-active]="isGridActive"
           [class.flow-reverse]="isGridActive && isGridExporting"
           stroke="var(--srne-grid-color)"
-          [attr.marker-end]="isGridActive && !isGridExporting ? 'url(#arrow-grid-import)' : null"
-          [attr.marker-start]="isGridActive && isGridExporting ? 'url(#arrow-grid-export)' : null"
           aria-hidden="true"/>
         <ng-container *ngIf="showGrid && isGridActive">
           <circle *ngIf="!isGridExporting" r="3.5" fill="var(--srne-grid-color)" aria-hidden="true">
