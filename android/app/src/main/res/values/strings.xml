@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">SRNE Solar Monitor</string>
-    <string name="title_activity_main">SRNE Solar Monitor</string>
+    <string name="app_name">J Solar</string>
+    <string name="title_activity_main">J Solar</string>
     <string name="package_name">com.srnesolarmomitor.app</string>
     <string name="custom_url_scheme">com.srnesolarmomitor.app</string>
 </resources>

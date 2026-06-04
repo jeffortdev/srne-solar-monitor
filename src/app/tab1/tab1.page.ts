@@ -127,7 +127,12 @@ export class Tab1Page implements OnInit, OnDestroy {
   }
 
   get isGridActive(): boolean {
-    return this.gridPowerW > 5;
+    return Math.abs(this.gridPowerW) > 5;
+  }
+
+  /** True when inverter is exporting power back to the grid (gridPowerW negative). */
+  get isGridExporting(): boolean {
+    return this.gridPowerW < -5;
   }
 
   get diagramAriaLabel(): string {

@@ -1,7 +1,7 @@
 <ion-header>
   <ion-toolbar>
     <ion-title>
-      <span class="app-title">&#9728;&#65039; SRNE Solar Monitor</span>
+      <span class="app-title">&#9728;&#65039; J Solar</span>
     </ion-title>
     <ion-buttons slot="end">
       <ion-badge [color]="statusBadgeColor" class="status-badge"
@@ -36,61 +36,107 @@
       <svg viewBox="0 0 320 270" xmlns="http://www.w3.org/2000/svg" class="flow-svg">
 
         <defs>
-          <!-- Arrowhead for charging: points toward inverter (up-right) -->
-          <marker id="arrow-charge" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
-            <polygon points="0 0, 7 3.5, 0 7" fill="var(--srne-battery-color)" opacity="0.9"/>
+          <!-- Solar arrow (toward inverter, down-right) -->
+          <marker id="arrow-solar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-solar-color)"/>
           </marker>
-          <!-- Arrowhead for discharging: points toward battery (down-left) -->
-          <marker id="arrow-discharge" markerWidth="7" markerHeight="7" refX="2" refY="3.5" orient="auto">
-            <polygon points="7 0, 0 3.5, 7 7" fill="var(--srne-battery-color)" opacity="0.9"/>
+          <!-- Load arrow (toward load, down-right) -->
+          <marker id="arrow-load" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-load-color)"/>
+          </marker>
+          <!-- Battery arrows -->
+          <marker id="arrow-battery-charge" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-battery-color)"/>
+          </marker>
+          <marker id="arrow-battery-discharge" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-battery-color)"/>
+          </marker>
+          <!-- Grid arrows -->
+          <marker id="arrow-grid-import" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-grid-color)"/>
+          </marker>
+          <marker id="arrow-grid-export" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            <polygon points="0 0, 8 4, 0 8" fill="var(--srne-grid-color)"/>
           </marker>
         </defs>
 
         <!-- ═══ Flow Lines (all routes converge on the Inverter hub) ═══ -->
 
-        <!-- Solar ──► Inverter -->
+        <!-- Solar ──► Inverter (one-way, arrow at inverter end) -->
         <line x1="86" y1="74" x2="131" y2="108"
           class="flow-path" [class.flow-active]="isSolarActive"
-          stroke="var(--srne-solar-color)" aria-hidden="true"/>
+          stroke="var(--srne-solar-color)"
+          [attr.marker-end]="isSolarActive ? 'url(#arrow-solar)' : null"
+          aria-hidden="true"/>
+        <circle *ngIf="isSolarActive" r="3.5" fill="var(--srne-solar-color)" aria-hidden="true">
+          <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
+            <mpath href="#solar-flow-path"/>
+          </animateMotion>
+        </circle>
 
-        <!-- Inverter ↔ Battery -->
+        <!-- Inverter ↔ Battery (bi-directional) -->
         <line x1="131" y1="158" x2="86" y2="191"
           class="flow-path"
           [class.flow-active]="isBatteryActive"
           [class.flow-reverse]="isBatteryActive && !isBatteryDischarging"
-          [attr.marker-end]="isBatteryActive && isBatteryDischarging ? 'url(#arrow-discharge)' : null"
-          [attr.marker-start]="isBatteryActive && !isBatteryDischarging ? 'url(#arrow-charge)' : null"
-          stroke="var(--srne-battery-color)" aria-hidden="true"/>
-
-        <!-- Battery flow direction dot -->
+          stroke="var(--srne-battery-color)"
+          [attr.marker-end]="isBatteryActive && isBatteryDischarging ? 'url(#arrow-battery-discharge)' : null"
+          [attr.marker-start]="isBatteryActive && !isBatteryDischarging ? 'url(#arrow-battery-charge)' : null"
+          aria-hidden="true"/>
         <ng-container *ngIf="isBatteryActive">
-          <!-- Discharging: dot travels from inverter-end (131,158) toward battery (86,191) -->
-          <circle *ngIf="isBatteryDischarging" r="4" fill="var(--srne-battery-color)" opacity="0.85" aria-hidden="true">
+          <circle *ngIf="isBatteryDischarging" r="3.5" fill="var(--srne-battery-color)" aria-hidden="true">
             <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
               <mpath href="#battery-path-discharge"/>
             </animateMotion>
           </circle>
-          <!-- Charging: dot travels from battery (86,191) toward inverter (131,158) -->
-          <circle *ngIf="!isBatteryDischarging" r="4" fill="var(--srne-battery-color)" opacity="0.85" aria-hidden="true">
+          <circle *ngIf="!isBatteryDischarging" r="3.5" fill="var(--srne-battery-color)" aria-hidden="true">
             <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
               <mpath href="#battery-path-charge"/>
             </animateMotion>
           </circle>
         </ng-container>
 
-        <!-- Hidden paths for animateMotion -->
-        <path id="battery-path-discharge" d="M 131 158 L 86 191" fill="none" stroke="none"/>
-        <path id="battery-path-charge" d="M 86 191 L 131 158" fill="none" stroke="none"/>
-
-        <!-- Inverter ──► Load -->
+        <!-- Inverter ──► Load (one-way, arrow at load end) -->
         <line x1="189" y1="158" x2="234" y2="191"
           class="flow-path" [class.flow-active]="isLoadActive"
-          stroke="var(--srne-load-color)" aria-hidden="true"/>
+          stroke="var(--srne-load-color)"
+          [attr.marker-end]="isLoadActive ? 'url(#arrow-load)' : null"
+          aria-hidden="true"/>
+        <circle *ngIf="isLoadActive" r="3.5" fill="var(--srne-load-color)" aria-hidden="true">
+          <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
+            <mpath href="#load-flow-path"/>
+          </animateMotion>
+        </circle>
 
-        <!-- Grid ──► Inverter (optional) -->
+        <!-- Grid ↔ Inverter (bi-directional, optional) -->
         <line *ngIf="showGrid" x1="234" y1="74" x2="189" y2="108"
-          class="flow-path" [class.flow-active]="isGridActive"
-          stroke="var(--srne-grid-color)" aria-hidden="true"/>
+          class="flow-path"
+          [class.flow-active]="isGridActive"
+          [class.flow-reverse]="isGridActive && isGridExporting"
+          stroke="var(--srne-grid-color)"
+          [attr.marker-end]="isGridActive && !isGridExporting ? 'url(#arrow-grid-import)' : null"
+          [attr.marker-start]="isGridActive && isGridExporting ? 'url(#arrow-grid-export)' : null"
+          aria-hidden="true"/>
+        <ng-container *ngIf="showGrid && isGridActive">
+          <circle *ngIf="!isGridExporting" r="3.5" fill="var(--srne-grid-color)" aria-hidden="true">
+            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
+              <mpath href="#grid-path-import"/>
+            </animateMotion>
+          </circle>
+          <circle *ngIf="isGridExporting" r="3.5" fill="var(--srne-grid-color)" aria-hidden="true">
+            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
+              <mpath href="#grid-path-export"/>
+            </animateMotion>
+          </circle>
+        </ng-container>
+
+        <!-- Hidden motion paths (direction matters: M = start, L = end) -->
+        <path id="solar-flow-path"      d="M 86 74  L 131 108" fill="none" stroke="none"/>
+        <path id="load-flow-path"       d="M 189 158 L 234 191" fill="none" stroke="none"/>
+        <path id="battery-path-discharge" d="M 131 158 L 86 191" fill="none" stroke="none"/>
+        <path id="battery-path-charge"    d="M 86 191  L 131 158" fill="none" stroke="none"/>
+        <path id="grid-path-import" d="M 234 74  L 189 108" fill="none" stroke="none"/>
+        <path id="grid-path-export" d="M 189 108 L 234 74"  fill="none" stroke="none"/>
 
         <!-- ═══ Solar Node — top-left ═══ -->
         <g transform="translate(58,52)" aria-label="Solar Panel node">

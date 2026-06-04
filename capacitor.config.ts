@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.srnesolarmomitor.app',
-  appName: 'SRNE Solar Monitor',
+  appName: 'J Solar',
   webDir: 'www',
   plugins: {
     BarcodeScanner: {
