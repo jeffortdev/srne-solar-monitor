@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  J Solar launcher foreground.
-  Composition (108x108 viewport, safe zone ~72x72 centred):
-    • Sun in upper-left with rays
-    • Solar panel (3x2 grid) angled across the centre
-    • Yellow lightning bolt overlapping the panel (electricity)
-    • "J SOLAR" wordmark across the bottom
+    J Solar launcher foreground (108x108, safe zone ~66x66 centred at 54,54).
+    Big stylised "J" formed by a solar panel + lightning bolt, with a sun.
+    All shapes are simple closed paths (no arc shorthand, no multi-subpath strokes).
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -13,91 +10,59 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- ===== Sun (upper-left) ===== -->
-    <!-- Sun rays -->
-    <path android:strokeColor="#FFC107" android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M22,18 L22,12" />
-    <path android:strokeColor="#FFC107" android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M14,22 L9,22" />
-    <path android:strokeColor="#FFC107" android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M30,22 L35,22" />
-    <path android:strokeColor="#FFC107" android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M16,16 L12.5,12.5" />
-    <path android:strokeColor="#FFC107" android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M28,16 L31.5,12.5" />
-    <!-- Sun disc -->
+    <!-- ===== Sun (upper-right) ===== -->
+    <!-- Sun disc as a polygon-approximated circle (16-gon, r=8, cx=82, cy=28) -->
     <path android:fillColor="#FFC107"
-        android:pathData="M22,22 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+        android:pathData="M90,28 L89.39,31.06 L87.66,33.66 L85.06,35.39 L82,36 L78.94,35.39 L76.34,33.66 L74.61,31.06 L74,28 L74.61,24.94 L76.34,22.34 L78.94,20.61 L82,20 L85.06,20.61 L87.66,22.34 L89.39,24.94 Z" />
 
-    <!-- ===== Solar panel ===== -->
+    <!-- Sun rays (8 short strokes) -->
+    <path android:fillColor="#FFC107"
+        android:pathData="M81,10 L83,10 L83,15 L81,15 Z" />
+    <path android:fillColor="#FFC107"
+        android:pathData="M81,41 L83,41 L83,46 L81,46 Z" />
+    <path android:fillColor="#FFC107"
+        android:pathData="M63,27 L68,27 L68,29 L63,29 Z" />
+    <path android:fillColor="#FFC107"
+        android:pathData="M96,27 L101,27 L101,29 L96,29 Z" />
+    <path android:fillColor="#FFC107"
+        android:pathData="M68,13 L70,15 L66,19 L64,17 Z" />
+    <path android:fillColor="#FFC107"
+        android:pathData="M94,13 L96,15 L100,19 L98,21 Z M94,13 L98,17 L96,19 L94,17 Z" />
+    <path android:fillColor="#FFC107"
+        android:pathData="M68,43 L66,41 L64,43 L66,45 Z" />
+
+    <!-- ===== Solar panel (perspective trapezoid) ===== -->
     <!-- Panel body -->
     <path android:fillColor="#1B3A6B"
-        android:pathData="M28,38 L88,38 L80,82 L20,82 Z" />
+        android:pathData="M22,46 L86,46 L78,84 L14,84 Z" />
     <!-- Panel border -->
-    <path android:strokeColor="#0D1F3C" android:strokeWidth="1.2"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M28,38 L88,38 L80,82 L20,82 Z" />
+    <path android:fillColor="#0D1F3C"
+        android:pathData="M22,46 L86,46 L78,84 L14,84 Z M24,48 L84,48 L77,82 L16,82 Z" />
 
-    <!-- Vertical cell dividers -->
-    <path android:strokeColor="#0D1F3C" android:strokeWidth="0.9"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M48,38 L42.5,82" />
-    <path android:strokeColor="#0D1F3C" android:strokeWidth="0.9"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M68,38 L65,82" />
-    <!-- Horizontal middle divider -->
-    <path android:strokeColor="#0D1F3C" android:strokeWidth="0.9"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M24,60 L84,60" />
+    <!-- Cell grid (drawn as thin filled bars rather than strokes) -->
+    <!-- vertical divider 1 -->
+    <path android:fillColor="#0D1F3C"
+        android:pathData="M43,48 L44,48 L41,82 L40,82 Z" />
+    <!-- vertical divider 2 -->
+    <path android:fillColor="#0D1F3C"
+        android:pathData="M64,48 L65,48 L62,82 L61,82 Z" />
+    <!-- horizontal divider -->
+    <path android:fillColor="#0D1F3C"
+        android:pathData="M18,64 L82,64 L81.5,65.5 L17.5,65.5 Z" />
 
-    <!-- Panel post / mount -->
+    <!-- Panel mounting post -->
     <path android:fillColor="#5A5A5A"
-        android:pathData="M49,82 L51,92 L53,92 L51,82 Z" />
-    <path android:fillColor="#5A5A5A"
-        android:pathData="M58,82 L57,92 L55,92 L56,82 Z" />
+        android:pathData="M46,84 L48,96 L60,96 L58,84 Z" />
+
     <!-- Ground line -->
-    <path android:strokeColor="#5A5A5A" android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:fillColor="@android:color/transparent"
-        android:pathData="M42,93 L66,93" />
+    <path android:fillColor="#5A5A5A"
+        android:pathData="M38,96 L66,96 L66,98 L38,98 Z" />
 
-    <!-- ===== Lightning bolt (electricity) ===== -->
+    <!-- ===== Lightning bolt (overlaid on panel) ===== -->
+    <!-- Outline (slightly darker for contrast) -->
+    <path android:fillColor="#FFA000"
+        android:pathData="M58,36 L40,66 L51,66 L44,90 L70,58 L58,58 L66,36 Z" />
+    <!-- Bolt fill -->
     <path android:fillColor="#FFD54F"
-        android:strokeColor="#FFA000" android:strokeWidth="1.2"
-        android:strokeLineJoin="round"
-        android:pathData="M62,30 L48,58 L57,58 L50,80 L74,52 L64,52 L72,30 Z" />
-
-    <!-- ===== "J SOLAR" wordmark ===== -->
-    <!-- Letter J -->
-    <path android:fillColor="#FFFFFF"
-        android:strokeColor="#000000" android:strokeWidth="0.4"
-        android:pathData="M16,98 L22,98 L22,102 C22,104.2 20.2,106 18,106 C15.8,106 14,104.2 14,102 L16,102 C16,103.1 16.9,104 18,104 C19.1,104 20,103.1 20,102 L20,100 L16,100 Z" />
-    <!-- SOLAR text approximated with simple letters -->
-    <!-- S -->
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M28,99 L33,99 L33,100 L29,100 L29,101.5 L33,101.5 L33,105 L28,105 L28,104 L32,104 L32,102.5 L28,102.5 Z" />
-    <!-- O -->
-    <path android:fillColor="@android:color/transparent"
-        android:strokeColor="#FFFFFF" android:strokeWidth="1"
-        android:pathData="M37,99.5 L41,99.5 L41,104.5 L37,104.5 Z" />
-    <!-- L -->
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M44,99 L45,99 L45,104 L48,104 L48,105 L44,105 Z" />
-    <!-- A -->
-    <path android:fillColor="@android:color/transparent"
-        android:strokeColor="#FFFFFF" android:strokeWidth="1"
-        android:pathData="M50,105 L52,99 L54,105 M50.7,103 L53.3,103" />
-    <!-- R -->
-    <path android:fillColor="#FFFFFF"
-        android:pathData="M56,99 L59,99 C60.1,99 61,99.9 61,101 C61,101.7 60.6,102.3 60,102.7 L61,105 L60,105 L59,102.8 L57,102.8 L57,105 L56,105 Z M57,100 L57,102 L59,102 C59.6,102 60,101.6 60,101 C60,100.4 59.6,100 59,100 Z" />
+        android:pathData="M59,38 L42,65 L52,65 L46,86 L68,59 L57,59 L64,38 Z" />
 </vector>
