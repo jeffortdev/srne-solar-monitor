@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Solar panel frame -->
+    <path
+        android:fillColor="#1B5E20"
+        android:pathData="M18,25 L90,25 L90,83 L18,83 Z" />
+    
+    <!-- Solar panel border -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="1"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M18,25 L90,25 L90,83 L18,83 Z" />
+    
+    <!-- Solar cells grid -->
+    <!-- Row 1 -->
+    <rect
+        android:x="22"
+        android:y="31"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFC107" />
+    <rect
+        android:x="36"
+        android:y="31"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFD54F" />
+    <rect
+        android:x="50"
+        android:y="31"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFC107" />
+    <rect
+        android:x="64"
+        android:y="31"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFD54F" />
+    <rect
+        android:x="78"
+        android:y="31"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFC107" />
+    
+    <!-- Row 2 -->
+    <rect
+        android:x="22"
+        android:y="45"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFD54F" />
+    <rect
+        android:x="36"
+        android:y="45"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFC107" />
+    <rect
+        android:x="50"
+        android:y="45"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFD54F" />
+    <rect
+        android:x="64"
+        android:y="45"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFC107" />
+    <rect
+        android:x="78"
+        android:y="45"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFD54F" />
+    
+    <!-- Row 3 -->
+    <rect
+        android:x="22"
+        android:y="59"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFC107" />
+    <rect
+        android:x="36"
+        android:y="59"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFD54F" />
+    <rect
+        android:x="50"
+        android:y="59"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFC107" />
+    <rect
+        android:x="64"
+        android:y="59"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFD54F" />
+    <rect
+        android:x="78"
+        android:y="59"
+        android:width="10"
+        android:height="10"
+        android:fillColor="#FFC107" />
+    
+    <!-- Cell borders for definition -->
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M22,31 L32,31 L32,41 L22,41 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M36,31 L46,31 L46,41 L36,41 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M50,31 L60,31 L60,41 L50,41 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M64,31 L74,31 L74,41 L64,41 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M78,31 L88,31 L88,41 L78,41 Z" />
+    
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M22,45 L32,45 L32,55 L22,55 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M36,45 L46,45 L46,55 L36,55 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M50,45 L60,45 L60,55 L50,55 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M64,45 L74,45 L74,55 L64,55 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M78,45 L88,45 L88,55 L78,55 Z" />
+    
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M22,59 L32,59 L32,69 L22,69 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M36,59 L46,59 L46,69 L36,69 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M50,59 L60,59 L60,69 L50,69 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M64,59 L74,59 L74,69 L64,69 Z" />
+    <path
+        android:strokeColor="#000000"
+        android:strokeWidth="0.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M78,59 L88,59 L88,69 L78,69 Z" />
+    
+    <!-- Sun rays above panel -->
+    <path
+        android:strokeColor="#FFC107"
+        android:strokeWidth="1.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M54,12 L54,18" />
+    <path
+        android:strokeColor="#FFC107"
+        android:strokeWidth="1.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M42,15 L46.5,19.5" />
+    <path
+        android:strokeColor="#FFC107"
+        android:strokeWidth="1.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M66,15 L61.5,19.5" />
+    
+    <!-- Sun circle -->
+    <circle
+        android:cx="54"
+        android:cy="15"
+        android:r="2.5"
+        android:fillColor="#FFC107" />
+</vector>

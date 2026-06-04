@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">SRNE Solar Monitor</string>
     <string name="title_activity_main">SRNE Solar Monitor</string>
-    <string name="package_name">com.poc.srnesolarmomitor</string>
-    <string name="custom_url_scheme">com.poc.srnesolarmomitor</string>
+    <string name="package_name">com.srnesolarmomitor.app</string>
+    <string name="custom_url_scheme">com.srnesolarmomitor.app</string>
 </resources>

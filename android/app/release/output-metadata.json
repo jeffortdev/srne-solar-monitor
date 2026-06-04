@@ -4,7 +4,7 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.poc.srnesolarmomitor",
+  "applicationId": "com.srnesolarmomitor.poc",
   "variantName": "release",
   "elements": [
     {

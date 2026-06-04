@@ -1,4 +1,4 @@
-package com.poc.srnesolarmomitor;
+package com.srnesolarmomitor.app;
 
 import com.getcapacitor.BridgeActivity;
 

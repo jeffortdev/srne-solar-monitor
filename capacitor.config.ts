@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.poc.srnesolarmomitor',
+  appId: 'com.srnesolarmomitor.app',
   appName: 'SRNE Solar Monitor',
   webDir: 'www',
   plugins: {
