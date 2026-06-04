@@ -113,6 +113,10 @@ export class Tab1Page implements OnInit, OnDestroy {
     return Math.abs(this.data?.batteryCurrent ?? 0) > 0.1;
   }
 
+  get isBatteryDischarging(): boolean {
+    return this.batteryPowerW < -5;
+  }
+
   get isLoadActive(): boolean {
     return (this.data?.loadPower ?? 0) > 0;
   }

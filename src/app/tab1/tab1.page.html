@@ -35,6 +35,17 @@
     <div class="flow-container" role="img" [attr.aria-label]="diagramAriaLabel">
       <svg viewBox="0 0 320 270" xmlns="http://www.w3.org/2000/svg" class="flow-svg">
 
+        <defs>
+          <!-- Arrowhead for charging: points toward inverter (up-right) -->
+          <marker id="arrow-charge" markerWidth="7" markerHeight="7" refX="5" refY="3.5" orient="auto">
+            <polygon points="0 0, 7 3.5, 0 7" fill="var(--srne-battery-color)" opacity="0.9"/>
+          </marker>
+          <!-- Arrowhead for discharging: points toward battery (down-left) -->
+          <marker id="arrow-discharge" markerWidth="7" markerHeight="7" refX="2" refY="3.5" orient="auto">
+            <polygon points="7 0, 0 3.5, 7 7" fill="var(--srne-battery-color)" opacity="0.9"/>
+          </marker>
+        </defs>
+
         <!-- ═══ Flow Lines (all routes converge on the Inverter hub) ═══ -->
 
         <!-- Solar ──► Inverter -->
@@ -44,8 +55,32 @@
 
         <!-- Inverter ↔ Battery -->
         <line x1="131" y1="158" x2="86" y2="191"
-          class="flow-path" [class.flow-active]="isBatteryActive"
+          class="flow-path"
+          [class.flow-active]="isBatteryActive"
+          [class.flow-reverse]="isBatteryActive && !isBatteryDischarging"
+          [attr.marker-end]="isBatteryActive && isBatteryDischarging ? 'url(#arrow-discharge)' : null"
+          [attr.marker-start]="isBatteryActive && !isBatteryDischarging ? 'url(#arrow-charge)' : null"
           stroke="var(--srne-battery-color)" aria-hidden="true"/>
+
+        <!-- Battery flow direction dot -->
+        <ng-container *ngIf="isBatteryActive">
+          <!-- Discharging: dot travels from inverter-end (131,158) toward battery (86,191) -->
+          <circle *ngIf="isBatteryDischarging" r="4" fill="var(--srne-battery-color)" opacity="0.85" aria-hidden="true">
+            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
+              <mpath href="#battery-path-discharge"/>
+            </animateMotion>
+          </circle>
+          <!-- Charging: dot travels from battery (86,191) toward inverter (131,158) -->
+          <circle *ngIf="!isBatteryDischarging" r="4" fill="var(--srne-battery-color)" opacity="0.85" aria-hidden="true">
+            <animateMotion dur="1.4s" repeatCount="indefinite" calcMode="linear">
+              <mpath href="#battery-path-charge"/>
+            </animateMotion>
+          </circle>
+        </ng-container>
+
+        <!-- Hidden paths for animateMotion -->
+        <path id="battery-path-discharge" d="M 131 158 L 86 191" fill="none" stroke="none"/>
+        <path id="battery-path-charge" d="M 86 191 L 131 158" fill="none" stroke="none"/>
 
         <!-- Inverter ──► Load -->
         <line x1="189" y1="158" x2="234" y2="191"
