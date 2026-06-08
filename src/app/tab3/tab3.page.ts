@@ -25,7 +25,7 @@ export class Tab3Page implements OnInit {
   devices: DeviceConfig[] = [];
   activeDeviceId: string | null = null;
   showGrid = false;
-  pollInterval: number = 5;
+  pollInterval: number = 30;
 
   showAddModal = false;
   editingDevice: DeviceConfig | null = null;
